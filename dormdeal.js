@@ -1,5 +1,5 @@
 /* =========================================================================
-   DORM DEAL — DATA & CONTROLLER (WITH PERSISTENCE & GOOGLE SSO)
+   DORM DEAL — DATA & CONTROLLER
    ========================================================================= */
 
 const UNIVERSITIES = [
@@ -28,7 +28,7 @@ const CATEGORY_ICON = {
   "Makeup":"💄", "Snacks":"🍿", "Clothes":"👕"
 };
 
-const DEFAULT_VENDORS = [
+let vendors = [
   { id:1, name:"CU PrintHub", category:"Printing", university:"Covenant University",
     description:"Same-day printing, binding & lamination right by the SST building.",
     location:"Behind SST Complex", baseDistanceKm:0.3, phone:"0803 111 2201", whatsapp:"2348031112201",
@@ -63,7 +63,6 @@ const DEFAULT_VENDORS = [
     reviews:[{user:"Emeka N.", rating:5, text:"The jollof rice hits different, and delivery is always on time.", date:"2 days ago"}] }
 ];
 
-let vendors = [];
 let groupOrders = [
   { id:1, title:"Bulk Screen-Protector Pack", category:"Tech Repair", vendorName:"QuickFix Gadget Clinic",
     unit:"units", threshold:15, joined:11, discountPct:20, windowLabel:"This week, Zion & Peniel Hall pickup" },
@@ -80,14 +79,18 @@ let deliveries = [
     orders:[{vendor:"QuickFix Gadget Clinic", item:"Screen protector"}] }
 ];
 
-// USER STORAGE & AUTH STATE
-let registeredUsers = [];
+// USER MANAGEMENT & AUTH STATE
+let registeredUsers = [
+  { name: "Demo Student", email: "student@cu.edu.ng", password: "password123", role: "buyer", university: "Covenant University", location: "Mary Hall, Room 204", phone: "08012345678", picture: "https://via.placeholder.com/150", businessName: "", servicesOffered: [] },
+  { name: "Demo Vendor", email: "vendor@cu.edu.ng", password: "password123", role: "seller", university: "Covenant University", location: "Hostel Mall, Shop B", phone: "08087654321", picture: "https://via.placeholder.com/150", businessName: "QuickFix Clinic", servicesOffered: ["Tech Repair"] }
+]; 
 let currentUser = null; 
 let userOrders = []; 
 
 let activeUni = "Covenant University";
 let activeCategory = "All";
 let compareOpen = false;
+let activeVendorId = null;
 
 /* ------------------ RELIABILITY CALCULATIONS ------------------ */
 const RELIABILITY_WEIGHTS = { onTime:0.5, cancellation:0.3, response:0.2 };
@@ -113,6 +116,12 @@ function starString(n){
   return "★★★★★".slice(0,full) + "☆☆☆☆☆".slice(0, 5-full);
 }
 
+/* ------------------ EMAIL VALIDATION HELPER ------------------ */
+function isValidEmail(email) {
+  const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return re.test(String(email).toLowerCase());
+}
+
 /* ------------------ INITIALIZATION ------------------ */
 function populateSelect(select, options, withAll){
   select.innerHTML = "";
@@ -136,9 +145,6 @@ function closeHamburgerMenu(){
 }
 
 function init(){
-  // 1. Load persisted data from localStorage
-  loadPersistedData();
-
   populateSelect(document.getElementById("uniSelect"), UNIVERSITIES, false);
   document.getElementById("uniSelect").value = activeUni;
   populateSelect(document.getElementById("signupUni"), UNIVERSITIES, false);
@@ -150,9 +156,6 @@ function init(){
   renderQueue();
   updateStats();
   initHamburgerMenu();
-
-  // Restore Active Session if remembered
-  restoreUserSession();
 
   // Event Listeners
   document.getElementById("uniSelect").addEventListener("change", e=>{
@@ -168,10 +171,6 @@ function init(){
   document.getElementById("drawerSignupBtn").addEventListener("click", ()=>openAuthModal("signup"));
   document.getElementById("openProfileBtn").addEventListener("click", openProfileModal);
   document.getElementById("logoutBtn").addEventListener("click", handleLogout);
-
-  // Google Sign In Handlers
-  document.getElementById("googleSignupBtn").addEventListener("click", () => handleGoogleAuth("buyer"));
-  document.getElementById("googleLoginBtn").addEventListener("click", () => handleGoogleAuth("buyer"));
 
   // Modal Close Handlers
   document.querySelectorAll(".modal-close").forEach(btn=>{
@@ -192,7 +191,11 @@ function init(){
   document.querySelectorAll("input[name='userRole']").forEach(radio=>{
     radio.addEventListener("change", (e)=>{
       const sellerFields = document.getElementById("sellerFields");
-      sellerFields.style.display = e.target.value === "seller" ? "block" : "none";
+      if(e.target.value === "seller"){
+        sellerFields.style.display = "block";
+      } else {
+        sellerFields.style.display = "none";
+      }
     });
   });
 
@@ -201,104 +204,109 @@ function init(){
   document.getElementById("loginForm").addEventListener("submit", handleLogin);
 
   // Start Withdrawal Window Clock Tick
-  setInterval(renderActiveOrders, 10000);
-}
-
-/* ------------------ PERSISTENCE ENGINE ------------------ */
-function loadPersistedData() {
-  const savedUsers = localStorage.getItem("dormdeal_users");
-  if (savedUsers) {
-    registeredUsers = JSON.parse(savedUsers);
-  } else {
-    registeredUsers = [
-      { name: "Demo Student", email: "student@cu.edu.ng", password: "password123", role: "buyer", university: "Covenant University", location: "Mary Hall, Room 204", phone: "08012345678", picture: "https://via.placeholder.com/150", businessName: "", servicesOffered: [] },
-      { name: "Demo Vendor", email: "vendor@cu.edu.ng", password: "password123", role: "seller", university: "Covenant University", location: "Hostel Mall, Shop B", phone: "08087654321", picture: "https://via.placeholder.com/150", businessName: "QuickFix Clinic", servicesOffered: ["Tech Repair"] }
-    ];
-  }
-
-  const savedVendors = localStorage.getItem("dormdeal_vendors");
-  if (savedVendors) {
-    vendors = JSON.parse(savedVendors);
-  } else {
-    vendors = [...DEFAULT_VENDORS];
-  }
-
-  const savedOrders = localStorage.getItem("dormdeal_orders");
-  if (savedOrders) {
-    userOrders = JSON.parse(savedOrders);
-  }
-}
-
-function restoreUserSession() {
-  const persistentSession = localStorage.getItem("dormdeal_session");
-  const tempSession = sessionStorage.getItem("dormdeal_session");
-  
-  const savedUser = persistentSession || tempSession;
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-    finishAuth();
-  }
-}
-
-function saveUserSession(user, rememberMe) {
-  currentUser = user;
-  const jsonUser = JSON.stringify(user);
-  if (rememberMe) {
-    localStorage.setItem("dormdeal_session", jsonUser);
-    sessionStorage.removeItem("dormdeal_session");
-  } else {
-    sessionStorage.setItem("dormdeal_session", jsonUser);
-    localStorage.removeItem("dormdeal_session");
-  }
+  setInterval(renderActiveOrders, 10000); 
 }
 
 /* ------------------ AUTHENTICATION & PROFILE LOGIC ------------------ */
 function switchAuthTab(targetTabId){
   document.querySelectorAll("[data-authtab]").forEach(b => {
-    b.classList.toggle("active", b.dataset.authtab === targetTabId);
+    if(b.dataset.authtab === targetTabId) b.classList.add("active");
+    else b.classList.remove("active");
   });
+
   document.querySelectorAll("#authModal .tab-panel").forEach(p => {
-    p.classList.toggle("active", p.id === targetTabId);
+    if(p.id === targetTabId) p.classList.add("active");
+    else p.classList.remove("active");
   });
+
+  // Toggle required state on inputs to prevent cross-tab validation issues
+  const signupInputs = document.querySelectorAll("#signupTab input, #signupTab select");
+  const loginInputs = document.querySelectorAll("#loginTab input, #loginTab select");
+
+  if(targetTabId === "signupTab"){
+    signupInputs.forEach(i => { if(i.dataset.required) i.required = true; });
+    loginInputs.forEach(i => { if(i.required) { i.dataset.required = "true"; i.required = false; } });
+  } else {
+    loginInputs.forEach(i => { if(i.dataset.required) i.required = true; });
+    signupInputs.forEach(i => { if(i.required) { i.dataset.required = "true"; i.required = false; } });
+  }
 }
 
-function openAuthModal(tab){
+function openAuthModal(mode){
+  closeHamburgerMenu();
   openModal("authModal");
-  switchAuthTab(tab === "signup" ? "signupTab" : "loginTab");
+  if(mode === "login"){
+    switchAuthTab("loginTab");
+  } else {
+    switchAuthTab("signupTab");
+  }
 }
 
 function handleSignup(e){
   e.preventDefault();
-  const name = document.getElementById("signupName").value.trim();
   const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value;
+  const name = document.getElementById("signupName").value.trim();
+  const role = document.querySelector("input[name='userRole']:checked").value;
   const university = document.getElementById("signupUni").value;
   const location = document.getElementById("signupLocation").value.trim();
   const phone = document.getElementById("signupPhone").value.trim();
-  const password = document.getElementById("signupPassword").value;
-  const role = document.querySelector("input[name='userRole']:checked").value;
+  const picture = document.getElementById("signupPic").value.trim() || "https://via.placeholder.com/150";
 
-  if(registeredUsers.some(u => u.email.toLowerCase() === email.toLowerCase())){
-    alert("An account with this email already exists!");
+  if(!isValidEmail(email)){
+    alert("Please enter a valid email address.");
+    return;
+  }
+  if(password.length < 8){
+    alert("Password must be at least 8 characters long.");
     return;
   }
 
+  const existing = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === role);
+  if(existing){
+    alert(`An account already exists as a ${role} with this email.`);
+    return;
+  }
+
+  let servicesList = [];
+  let businessName = "";
+
+  if(role === "seller"){
+    businessName = document.getElementById("signupBusinessName").value.trim() || name + "'s Business";
+    const rawServices = document.getElementById("signupServices").value;
+    servicesList = rawServices.split(",").map(s=>s.trim()).filter(s=>s.length > 0);
+  }
+
   const newUser = {
-    name, email, password, role, university, location, phone,
-    picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1F9D82&color=fff`,
-    businessName: role === "seller" ? document.getElementById("signupBusiness").value.trim() : "",
-    servicesOffered: role === "seller" ? [document.getElementById("signupService").value.trim()] : []
+    name, email, password, role, university, location, phone, picture,
+    businessName, servicesOffered: servicesList
   };
 
   registeredUsers.push(newUser);
-  localStorage.setItem("dormdeal_users", JSON.stringify(registeredUsers));
+  currentUser = newUser;
 
-  // IF USER REGISTERED AS A SELLER -> INSTANTIATE REAL VENDOR PROFILE ON MAIN PAGE DIRECTORY!
   if(role === "seller"){
-    createAndRegisterVendor(newUser);
+    vendors.unshift({
+      id: Date.now(),
+      name: businessName,
+      category: servicesList.length ? "Custom" : "Services",
+      university: university,
+      description: `Services offered: ${servicesList.join(", ")}`,
+      location: location,
+      baseDistanceKm: 0.4,
+      phone: phone,
+      whatsapp: phone,
+      price: 1000,
+      priceLabel: "Contact for price",
+      featured: false,
+      discount: "",
+      servicesOffered: servicesList,
+      reliability: { onTimeRate:1.0, cancellationRate:0.0, avgResponseMins:5 },
+      reviews: []
+    });
+    renderVendors();
   }
 
-  saveUserSession(newUser, true);
-  closeModal("authModal");
   finishAuth();
 }
 
@@ -306,345 +314,471 @@ function handleLogin(e){
   e.preventDefault();
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
-  const rememberMe = document.getElementById("rememberMe").checked;
+  const role = document.querySelector("input[name='loginRole']:checked").value;
 
-  const user = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-  if(!user){
-    alert("Invalid email or password!");
+  if(!isValidEmail(email)){
+    alert("Please enter a valid email address.");
     return;
   }
 
-  saveUserSession(user, rememberMe);
-  closeModal("authModal");
-  finishAuth();
-}
-
-function handleGoogleAuth(defaultRole = "buyer"){
-  const mockGoogleUser = {
-    name: "Alex Johnson (Google)",
-    email: "alex.google@cu.edu.ng",
-    password: "google_authenticated_sso",
-    role: defaultRole,
-    university: activeUni,
-    location: "Peter Hall, Room 102",
-    phone: "0812 345 6789",
-    picture: "https://lh3.googleusercontent.com/a/default-user=s96-c",
-    businessName: defaultRole === "seller" ? "Alex's Google Printing" : "",
-    servicesOffered: defaultRole === "seller" ? ["Express Document Print"] : []
-  };
-
-  let existingUser = registeredUsers.find(u => u.email.toLowerCase() === mockGoogleUser.email.toLowerCase());
-  if(!existingUser){
-    registeredUsers.push(mockGoogleUser);
-    localStorage.setItem("dormdeal_users", JSON.stringify(registeredUsers));
-    existingUser = mockGoogleUser;
-
-    if(defaultRole === "seller") {
-      createAndRegisterVendor(mockGoogleUser);
-    }
+  const user = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === role && u.password === password);
+  if(!user){
+    alert("Invalid credentials or role selection.\n\nTip: You can use demo accounts:\n• Buyer: student@cu.edu.ng / password123\n• Seller: vendor@cu.edu.ng / password123");
+    return;
   }
 
-  saveUserSession(existingUser, true);
-  closeModal("authModal");
+  currentUser = user;
   finishAuth();
-}
-
-function createAndRegisterVendor(user) {
-  const category = document.getElementById("signupCategory") ? document.getElementById("signupCategory").value : "Printing";
-  const priceLabel = document.getElementById("signupPrice") ? document.getElementById("signupPrice").value : "₦1,000";
-
-  const newVendorCard = {
-    id: Date.now(),
-    name: user.businessName || `${user.name}'s Service`,
-    category: category,
-    university: user.university,
-    description: `Verified Seller ${user.name} providing fast campus fulfillment.`,
-    location: user.location,
-    baseDistanceKm: 0.4,
-    phone: user.phone,
-    whatsapp: `234${user.phone.replace(/^0/, '')}`,
-    price: 1000,
-    priceLabel: priceLabel || "₦1,000",
-    featured: true,
-    discount: "New Campus Seller Special",
-    servicesOffered: user.servicesOffered.length ? user.servicesOffered : ["Custom Request"],
-    reliability: { onTimeRate: 1.0, cancellationRate: 0.0, avgResponseMins: 3 },
-    reviews: []
-  };
-
-  vendors.unshift(newVendorCard);
-  localStorage.setItem("dormdeal_vendors", JSON.stringify(vendors));
-  renderVendors();
-  updateStats();
-}
-
-function finishAuth(){
-  const isSeller = currentUser.role === "seller";
-  document.getElementById("guestNavControls").style.display = "none";
-  document.getElementById("userNavControls").style.display = "flex";
-  document.getElementById("greetText").textContent = `Hi, ${currentUser.name.split(" ")[0]} (${isSeller ? 'Seller 🏪' : 'Buyer 🎓'})`;
-  document.getElementById("myOrdersSection").style.display = "block";
-  
-  updateHamburgerUserMenu();
-  renderActiveOrders();
 }
 
 function handleLogout(){
   currentUser = null;
-  localStorage.removeItem("dormdeal_session");
-  sessionStorage.removeItem("dormdeal_session");
-
   document.getElementById("guestNavControls").style.display = "flex";
   document.getElementById("userNavControls").style.display = "none";
   document.getElementById("myOrdersSection").style.display = "none";
   updateHamburgerUserMenu();
 }
 
-function updateHamburgerUserMenu(){
-  const badge = document.getElementById("drawerUserBadge");
-  const name = document.getElementById("drawerUserName");
-  const role = document.getElementById("drawerUserRole");
-  const authFooter = document.getElementById("drawerAuthFooter");
-
-  if(currentUser){
-    badge.textContent = currentUser.role === "seller" ? "🏪 Verified Seller" : "🎓 Verified Buyer";
-    name.textContent = currentUser.name;
-    role.textContent = `${currentUser.university} • ${currentUser.location}`;
-    authFooter.innerHTML = `<button class="btn btn-coral btn-block" onclick="handleLogout()">Logout Account</button>`;
-  } else {
-    badge.textContent = "👤 Guest Mode";
-    name.textContent = "Welcome, Guest";
-    role.textContent = "Select Buyer or Seller to continue";
-    authFooter.innerHTML = `
-      <div class="row-2">
-        <button class="btn btn-ghost btn-block" onclick="openAuthModal('login')">Log in</button>
-        <button class="btn btn-gold btn-block" onclick="openAuthModal('signup')">Sign Up</button>
-      </div>`;
-  }
+function finishAuth(){
+  document.getElementById("guestNavControls").style.display = "none";
+  document.getElementById("userNavControls").style.display = "flex";
+  document.getElementById("greetText").textContent = `${currentUser.role === 'buyer' ? '🎓 Buyer' : '🏪 Seller'} · ${currentUser.name}`;
+  closeModal("authModal");
+  updateHamburgerUserMenu();
+  renderActiveOrders();
 }
 
 function openProfileModal(){
   if(!currentUser) return;
-  const wrap = document.getElementById("profileModalView");
-  wrap.innerHTML = `
-    <div style="text-align:center; padding:10px 0;">
-      <img src="${currentUser.picture}" style="width:72px; height:72px; border-radius:50%; border:2px solid var(--teal); margin-bottom:10px;">
+  const view = document.getElementById("profileModalView");
+  const isSeller = currentUser.role === "seller";
+  
+  view.innerHTML = `
+    <div style="text-align:center; margin-bottom:20px;">
+      <div class="avatar" style="width:80px; height:80px; margin:0 auto 12px; border-radius:50%;">
+        <img src="${currentUser.picture}" alt="Profile Picture" onerror="this.src='https://via.placeholder.com/80?text=User'">
+      </div>
       <h4>${currentUser.name}</h4>
-      <span class="badge ${currentUser.role === 'seller' ? 'badge-teal' : 'badge-gold'}">${currentUser.role.toUpperCase()}</span>
-      <p style="margin-top:10px; font-size:13px; color:var(--ink-soft);">${currentUser.email}</p>
-      <p style="font-size:13px; color:var(--ink-soft);">${currentUser.university} — ${currentUser.location}</p>
-      ${currentUser.role === 'seller' ? `<div style="margin-top:14px; background:rgba(31,157,130,0.1); padding:10px; border-radius:8px;"><strong>Business:</strong> ${currentUser.businessName}</div>` : ''}
-    </div>`;
+      <span class="badge badge-featured">${isSeller ? '🏪 Seller Account' : '🎓 Buyer Account'}</span>
+    </div>
+
+    <div class="field"><label>Email Address</label><input type="text" value="${currentUser.email}" readonly></div>
+    <div class="field"><label>Phone Number / WhatsApp</label><input type="text" value="${currentUser.phone}" readonly></div>
+    <div class="field"><label>Campus / Location</label><input type="text" value="${currentUser.university} — ${currentUser.location}" readonly></div>
+
+    ${isSeller ? `
+      <div style="border-top:1px dashed var(--line); padding-top:14px; margin-top:14px;">
+        <div class="field"><label>Business Name</label><input type="text" value="${currentUser.businessName}" readonly></div>
+        <div class="field"><label>Services & Commodities Offered</label>
+          <div class="tag-list">
+            ${currentUser.servicesOffered.map(s=>`<span class="tag">${s}</span>`).join("") || "<span>No custom services listed</span>"}
+          </div>
+        </div>
+      </div>
+    ` : ''}
+  `;
   openModal("profileModal");
 }
 
-/* ------------------ HAMBURGER & RENDERERS ------------------ */
+/* ------------------------ HAMBURGER MENU ------------------------ */
 function initHamburgerMenu(){
   const btn = document.getElementById("hamburgerBtn");
   const drawer = document.getElementById("navDrawer");
   const overlay = document.getElementById("navOverlay");
 
   btn.addEventListener("click", ()=>{
-    btn.classList.toggle("open");
-    drawer.classList.toggle("open");
-    overlay.classList.toggle("open");
+    const open = drawer.classList.toggle("open");
+    btn.classList.toggle("open", open);
+    overlay.classList.toggle("open", open);
   });
+
   overlay.addEventListener("click", closeHamburgerMenu);
+  
+  drawer.querySelectorAll("a").forEach(a=>{
+    a.addEventListener("click", closeHamburgerMenu);
+  });
 }
 
-function renderCategoryChips(){
-  const wrap = document.getElementById("categoryChips");
-  wrap.innerHTML = `<button class="chip ${activeCategory==='All'?'active':''}" data-cat="All">✨ All Services</button>`;
-  CATEGORIES.forEach(c=>{
-    const icon = CATEGORY_ICON[c] || "📦";
-    wrap.innerHTML += `<button class="chip ${activeCategory===c?'active':''}" data-cat="${c}">${icon} ${c}</button>`;
+function updateHamburgerUserMenu(){
+  const badge = document.getElementById("drawerUserBadge");
+  const name = document.getElementById("drawerUserName");
+  const role = document.getElementById("drawerUserRole");
+  const footer = document.getElementById("drawerAuthFooter");
+
+  if(currentUser){
+    badge.textContent = currentUser.role === 'buyer' ? '🎓 Buyer Active' : '🏪 Seller Active';
+    name.textContent = currentUser.name;
+    role.textContent = currentUser.email;
+    footer.style.display = "none";
+  } else {
+    badge.textContent = "👤 Guest Mode";
+    name.textContent = "Welcome, Guest";
+    role.textContent = "Select Buyer or Seller to continue";
+    footer.style.display = "block";
+  }
+}
+
+/* --------------------------- RECALCULATE DISTANCES --------------------------- */
+function recalcDistances(){
+  vendors.forEach(v => {
+    v.baseDistanceKm = Number((Math.random() * 1.5 + 0.1).toFixed(1));
   });
-  wrap.querySelectorAll(".chip").forEach(ch=>{
-    ch.addEventListener("click", ()=>{
-      activeCategory = ch.dataset.cat;
+  renderVendors();
+  alert("Hostel location scanned! Distances updated for your campus section.");
+}
+
+/* --------------------------- WITHDRAWAL & ORDERS --------------------------- */
+function addOrderWithWithdrawal(orderData){
+  const newOrder = {
+    id: Date.now(),
+    ...orderData,
+    timestamp: Date.now()
+  };
+  userOrders.unshift(newOrder);
+  renderActiveOrders();
+}
+
+function withdrawOrder(orderId){
+  const idx = userOrders.findIndex(o => o.id === orderId);
+  if(idx === -1) return;
+
+  const order = userOrders[idx];
+  const elapsedMins = (Date.now() - order.timestamp) / (1000 * 60);
+
+  if(elapsedMins > 10){
+    alert("The 10-minute withdrawal window has expired for this request.");
+    return;
+  }
+
+  if(order.type === 'pool' && order.poolId){
+    const pool = groupOrders.find(g => g.id === order.poolId);
+    if(pool && pool.joined > 0){
+      pool.joined -= 1;
+      renderPools();
+    }
+  }
+
+  userOrders.splice(idx, 1);
+  alert("Your order/request has been withdrawn successfully.");
+  renderActiveOrders();
+  renderTicker();
+}
+
+function renderActiveOrders(){
+  const sec = document.getElementById("myOrdersSection");
+  const list = document.getElementById("activeOrdersList");
+
+  if(!currentUser || userOrders.length === 0){
+    sec.style.display = "none";
+    return;
+  }
+
+  sec.style.display = "block";
+  const now = Date.now();
+
+  list.innerHTML = userOrders.map(o => {
+    const elapsedSecs = Math.floor((now - o.timestamp) / 1000);
+    const windowSecs = 10 * 60;
+    const remainingSecs = Math.max(0, windowSecs - elapsedSecs);
+    const canWithdraw = remainingSecs > 0;
+    const mins = Math.floor(remainingSecs / 60);
+    const secs = remainingSecs % 60;
+
+    return `
+      <div class="card" style="border:1px solid var(--gold);">
+        <div class="card-top">
+          <h4>${o.title}</h4>
+          <span class="badge ${canWithdraw ? 'badge-featured' : ''}">${canWithdraw ? 'Window Active' : 'Confirmed'}</span>
+        </div>
+        <p class="desc">Seller/Vendor: ${o.vendor}</p>
+        <div class="meta-row">
+          <span>${canWithdraw ? `⏳ ${mins}m ${secs}s left to withdraw` : '🔒 Window closed'}</span>
+        </div>
+        ${canWithdraw ? `
+          <button class="btn btn-coral btn-sm btn-block" onclick="withdrawOrder(${o.id})">Withdraw Order</button>
+        ` : ''}
+      </div>
+    `;
+  }).join("");
+}
+
+/* ---------------------------- TICKER ---------------------------- */
+function renderTicker(){
+  const items = [
+    ...groupOrders.map(g=>`🔥 ${g.title} — ${g.joined}/${g.threshold} joined <span>${g.discountPct}% unlock</span>`),
+    ...deliveries.map(d=>`🛵 ${d.hall} run · ${d.orders.length} orders batched <span>${d.slot}</span>`),
+    `🎓 Now live at Covenant University <span>expanding soon</span>`
+  ];
+  const track = document.getElementById("tickerTrack");
+  track.innerHTML = items.concat(items).map(i=>`<span style="color:inherit; font-weight:400;">${i}</span>`).join(" &nbsp;•&nbsp; ");
+}
+
+/* ------------------------- CATEGORY CHIPS ------------------------- */
+function renderCategoryChips(){
+  const row = document.getElementById("categoryChips");
+  const allCats = ["All", ...CATEGORIES];
+  row.innerHTML = allCats.map(cat => `
+    <button class="chip ${cat===activeCategory ? 'active':''}" data-cat="${cat}">
+      ${cat==="All" ? '✨ All' : `${CATEGORY_ICON[cat]||''} ${cat}`}
+    </button>
+  `).join("");
+
+  row.querySelectorAll(".chip").forEach(chip=>{
+    chip.addEventListener("click", ()=>{
+      activeCategory = chip.dataset.cat;
       renderCategoryChips();
       renderVendors();
+      if(compareOpen) renderCompare();
     });
   });
 }
 
-function renderTicker(){
-  const track = document.getElementById("tickerTrack");
-  const items = [
-    "🔥 CU PrintHub completed 14 project bindings in Peniel Hall today",
-    "⚡ QuickFix Clinic added 50 screen protectors to Zion Hall batch",
-    "🍲 Mama Nkechi's Kitchen bulk order unlocked at 15% OFF",
-    "🛵 Next delivery runner batch leaves at 4:00 PM for Mary Hall"
-  ];
-  track.innerHTML = items.map(i=>`<span>${i}</span>`).join(" • ");
+function filteredVendors(){
+  return vendors.filter(v => {
+    const uniMatch = activeUni === "All" || v.university.toLowerCase() === activeUni.toLowerCase();
+    const catMatch = activeCategory === "All" || v.category === activeCategory;
+    return uniMatch && catMatch;
+  });
 }
 
+function distanceOf(v){
+  return v.baseDistanceKm;
+}
+
+/* --------------------------- VENDOR DIRECTORY --------------------------- */
 function renderVendors(){
+  const list = filteredVendors();
+  document.getElementById("resultsCount").textContent = `${list.length} result${list.length!==1?'s':''}`;
   const grid = document.getElementById("vendorGrid");
-  document.getElementById("currentUniLabel").textContent = activeUni;
-  
-  let list = vendors.filter(v=> v.university === activeUni || v.university === "All");
-  if(activeCategory !== "All") list = list.filter(v=>v.category === activeCategory);
 
   if(!list.length){
-    grid.innerHTML = `<div style="grid-column:1/-1; padding:40px; text-align:center; background:#fff; border-radius:16px;">
-      <h3>No campus sellers listed for ${activeCategory} at ${activeUni} yet.</h3>
-      <p style="margin-top:8px;">Be the first student hustle to register standard services here!</p>
-    </div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No campus sellers match this category filter. Try selecting "All" categories.</div>`;
     return;
   }
 
   grid.innerHTML = list.map(v=>{
     const score = reliabilityScore(v.reliability);
-    const badge = reliabilityLabel(score);
+    const rel = reliabilityLabel(score);
+    const rating = avgRating(v);
     return `
-    <div class="card vendor-card">
-      <div class="card-head">
+      <article class="card" data-id="${v.id}">
+        <div class="card-top">
+          <div class="avatar">${CATEGORY_ICON[v.category] || "🏬"}</div>
+          ${v.featured ? '<span class="badge badge-featured">Featured</span>' : ''}
+        </div>
         <div>
-          <span class="category-badge">${CATEGORY_ICON[v.category] || "📦"} ${v.category}</span>
-          <h3>${v.name}</h3>
-          <p class="location">📍 ${v.location} (${v.baseDistanceKm} km away)</p>
+          <h4>${v.name}</h4>
+          <span class="cat">${v.category} · ${v.university.split(" (")[0]}</span>
         </div>
-        <div class="score-pill" style="border-color:${badge.color}">
-          <span class="score-num" style="color:${badge.color}">${score}</span>
-          <span class="score-tag">${badge.label}</span>
+        <p class="desc">${v.description}</p>
+        ${v.discount ? `<span class="discount-tag">${v.discount}</span>` : ''}
+        <div class="meta-row">
+          <span>📍 ${distanceOf(v).toFixed(1)} mi · ${v.location}</span>
+          <span class="reli"><span class="reli-dot" style="background:${rel.color};"></span>${rel.label}</span>
         </div>
-      </div>
-      <p class="desc">${v.description}</p>
-      <div class="service-tags">
-        ${v.servicesOffered.map(s=>`<span class="tag">${s}</span>`).join("")}
-      </div>
-      <div class="card-foot">
-        <div class="price">
-          <span class="amount">${v.priceLabel}</span>
-          ${v.discount ? `<span class="discount">${v.discount}</span>` : ""}
+        <div class="meta-row" style="border-top:none; padding-top:0;">
+          <span class="price-tag">${v.priceLabel}</span>
+          <span>${rating ? `${starString(rating)} (${v.reviews.length})` : 'No reviews yet'}</span>
         </div>
-        <button class="btn btn-teal btn-sm" onclick="openVendorModal(${v.id})">Book / Direct Chat</button>
-      </div>
-    </div>`;
+        <div class="card-actions">
+          <button class="btn btn-outline-dark btn-sm btn-block open-profile" data-id="${v.id}">View & Book</button>
+        </div>
+      </article>`;
   }).join("");
+
+  grid.querySelectorAll(".open-profile").forEach(btn=>{
+    btn.addEventListener("click", ()=>openVendorProfile(Number(btn.dataset.id)));
+  });
 }
 
-function openVendorModal(id){
-  const v = vendors.find(item => item.id === id);
+/* --------------------------- COMPARE --------------------------- */
+function toggleCompare(){
+  compareOpen = !compareOpen;
+  document.getElementById("compareArea").style.display = compareOpen ? "block" : "none";
+  document.getElementById("compareToggle").classList.toggle("btn-teal", compareOpen);
+  if(compareOpen) renderCompare();
+}
+
+function renderCompare(){
+  const list = filteredVendors();
+  const minPrice = Math.min(...list.map(v=>v.price));
+
+  const rows = list.map(v=>{
+    const score = reliabilityScore(v.reliability);
+    const isLowest = v.price === minPrice;
+    return `<tr class="${isLowest ? 'row-highlight':''}">
+      <td><b>${v.name}</b><br><small style="color:var(--ink-soft);">${v.location}</small></td>
+      <td>${v.priceLabel} ${isLowest ? '<span class="badge badge-featured" style="font-size:9px;">Best Price</span>':''}</td>
+      <td><span class="reli"><span class="reli-dot" style="background:${reliabilityLabel(score).color};"></span>${score}/100</span></td>
+      <td>${(v.reliability.onTimeRate*100).toFixed(0)}%</td>
+      <td>${v.reliability.avgResponseMins}m</td>
+      <td><button class="btn btn-teal btn-sm open-profile" data-id="${v.id}">Book</button></td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("compareArea").innerHTML = `
+    <div style="overflow-x:auto; background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);">
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+        <thead>
+          <tr style="text-align:left; border-bottom:1px solid var(--line); font-family:var(--font-mono); font-size:11px; text-transform:uppercase;">
+            <th style="padding:10px;">Seller</th>
+            <th style="padding:10px;">Price</th>
+            <th style="padding:10px;">Score</th>
+            <th style="padding:10px;">On-Time</th>
+            <th style="padding:10px;">Response</th>
+            <th style="padding:10px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  document.querySelectorAll("#compareArea .open-profile").forEach(btn=>{
+    btn.addEventListener("click", ()=>openVendorProfile(Number(btn.dataset.id)));
+  });
+}
+
+/* --------------------------- VENDOR MODAL --------------------------- */
+function openVendorProfile(id){
+  const v = vendors.find(x=>x.id===id);
   if(!v) return;
-  const content = document.getElementById("vendorModalContent");
-  content.innerHTML = `
-    <button class="modal-close" onclick="closeModal('vendorModal')">✕</button>
-    <h3>${v.name}</h3>
-    <p style="color:var(--ink-soft); font-size:13.5px; margin-bottom:14px;">${v.description}</p>
-    <div class="confirm-box show" style="margin-bottom:14px;">
-      <strong>Instant Direct Contact:</strong><br>
-      📞 Phone: <a href="tel:${v.phone}">${v.phone}</a><br>
-      💬 WhatsApp: <a href="https://wa.me/${v.whatsapp}" target="_blank">Chat with Seller</a>
+  activeVendorId = id;
+  const score = reliabilityScore(v.reliability);
+  const rel = reliabilityLabel(score);
+  const rating = avgRating(v);
+
+  const modal = document.getElementById("vendorModalContent");
+  modal.innerHTML = `
+    <button class="modal-close" data-close="vendorModal">✕</button>
+    <div style="display:flex; gap:16px; align-items:center; margin-bottom:12px;">
+      <div class="avatar" style="width:56px; height:56px; font-size:26px;">${CATEGORY_ICON[v.category] || "🏬"}</div>
+      <div>
+        <h3>${v.name}</h3>
+        <span class="cat" style="font-family:var(--font-mono); font-size:12px; color:var(--teal);">${v.category} · ${v.university}</span>
+      </div>
     </div>
-    <h4>Book Service</h4>
-    <form onsubmit="handleOrderSubmit(event, '${v.name}', '${v.category}')">
-      <div class="field">
-        <label>Select Required Service</label>
-        <select id="modalServiceItem">${v.servicesOffered.map(s=>`<option value="${s}">${s}</option>`).join("")}</select>
+    <p class="sub" style="margin-bottom:12px;">${v.description}</p>
+    
+    <div class="score-box">
+      <div class="score-ring" style="background:${rel.color};">${score}</div>
+      <div class="score-detail">
+        <b>Reliability Score (${rel.label})</b><br>
+        On-time rate: ${(v.reliability.onTimeRate*100).toFixed(0)}% · 
+        Cancellation: ${(v.reliability.cancellationRate*100).toFixed(0)}% · 
+        Avg response: ${v.reliability.avgResponseMins} mins
       </div>
-      <div class="field">
-        <label>Your Hostel / Room</label>
-        <input type="text" id="modalHostelInput" required placeholder="e.g. Zion Hall, Room 310">
-      </div>
-      <button class="btn btn-gold btn-block" type="submit">Submit Request Order</button>
-    </form>`;
-  openModal("vendorModal");
-}
+    </div>
 
-function handleOrderSubmit(e, vendorName, category){
-  e.preventDefault();
-  const item = document.getElementById("modalServiceItem").value;
-  const hostel = document.getElementById("modalHostelInput").value;
-
-  const order = {
-    id: Date.now(),
-    vendor: vendorName,
-    item: item,
-    hostel: hostel,
-    timestamp: Date.now(),
-    type: "Single Order"
-  };
-
-  userOrders.unshift(order);
-  localStorage.setItem("dormdeal_orders", JSON.stringify(userOrders));
-  addToDeliveryQueue(hostel, "Next Delivery Slot", vendorName, category);
-  
-  closeModal("vendorModal");
-  alert(`Order submitted successfully! Your 10-minute cancellation window has started.`);
-  
-  if(currentUser) finishAuth();
-}
-
-function renderActiveOrders(){
-  const wrap = document.getElementById("activeOrdersList");
-  if(!wrap) return;
-
-  if(!userOrders.length){
-    wrap.innerHTML = `<p style="grid-column:1/-1; color:var(--ink-soft);">No active orders placed yet.</p>`;
-    return;
-  }
-
-  const now = Date.now();
-  wrap.innerHTML = userOrders.map(o=>{
-    const elapsedMins = (now - o.timestamp) / (1000 * 60);
-    const canWithdraw = elapsedMins < 10;
-    const remainingMins = Math.max(0, Math.ceil(10 - elapsedMins));
-
-    return `
-    <div class="card card-pad" style="border-left:4px solid var(--teal);">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-        <div>
-          <h4>${o.item}</h4>
-          <p style="font-size:13px; color:var(--ink-soft);">Seller: ${o.vendor} • Deliver to: ${o.hostel}</p>
+    ${v.servicesOffered && v.servicesOffered.length ? `
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px; font-family:var(--font-mono); text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom:6px;">Services & Rates</label>
+        <div class="tag-list">
+          ${v.servicesOffered.map(s=>`<span class="tag">${s}</span>`).join("")}
         </div>
-        <span class="badge ${canWithdraw ? 'badge-teal' : 'badge-featured'}">${canWithdraw ? `${remainingMins}m window left` : 'Locked in batch'}</span>
       </div>
-      <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-        ${canWithdraw ? `<button class="btn btn-coral btn-sm" onclick="withdrawOrder(${o.id})">Withdraw Order</button>` : `<span style="font-size:12px; color:var(--ink-soft);">Order dispatched to logistics runner.</span>`}
-      </div>
-    </div>`;
-  }).join("");
+    ` : ''}
+
+    <div class="contact-row">
+      <a href="https://wa.me/${v.whatsapp}" target="_blank" class="contact-btn contact-wa">💬 WhatsApp Seller</a>
+      <a href="tel:${v.phone}" class="contact-btn contact-ph">📞 Call ${v.phone}</a>
+    </div>
+
+    <div style="margin-top:20px; border-top:1px solid var(--line); padding-top:16px;">
+      <h4>Book / Request Service</h4>
+      <form id="bookForm" style="margin-top:10px;">
+        <div class="row-2">
+          <div class="field"><label>Preferred Date</label><input type="date" id="bookDate" required></div>
+          <div class="field"><label>Delivery Slot</label>
+            <select id="bookSlot">
+              <option>Morning (9:00 - 12:00)</option>
+              <option>Afternoon (12:00 - 16:00)</option>
+              <option>Evening (16:00 - 20:00)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Hostel / Delivery Hall</label><input type="text" id="bookHall" required placeholder="e.g. Peniel Hall, Room 102"></div>
+        <button class="btn btn-gold btn-block" type="submit">Place Order — Instant Confirmation</button>
+      </form>
+      <div class="confirm-box" id="bookConfirm"></div>
+    </div>
+  `;
+
+  openModal("vendorModal");
+
+  document.querySelectorAll("#vendorModalContent .modal-close").forEach(btn=>{
+    btn.addEventListener("click", ()=>closeModal(btn.dataset.close));
+  });
+
+  document.getElementById("bookForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    if(!currentUser){
+      alert("Please Sign Up or Log In first to place an order.");
+      openAuthModal("login");
+      return;
+    }
+    const slot = document.getElementById("bookSlot").value;
+    const hall = document.getElementById("bookHall").value;
+    const box = document.getElementById("bookConfirm");
+    box.classList.add("show");
+    box.innerHTML = `<b>Order Confirmed ✓</b><br>You have 10 minutes to withdraw this order if needed.<br>Delivery to: ${hall}`;
+    addOrderWithWithdrawal({ type: 'order', title: `${v.category} Order`, vendor: v.name });
+    if(hall){
+      addToDeliveryQueue(hall, slot, v.name, v.category);
+    }
+  });
 }
 
-function withdrawOrder(id){
-  userOrders = userOrders.filter(o => o.id !== id);
-  localStorage.setItem("dormdeal_orders", JSON.stringify(userOrders));
-  renderActiveOrders();
-}
-
+/* --------------------------- GROUP BUY POOLS --------------------------- */
 function renderPools(){
-  const grid = document.getElementById("poolsGrid");
+  const grid = document.getElementById("poolGrid");
   grid.innerHTML = groupOrders.map(g=>{
-    const pct = Math.round((g.joined / g.threshold)*100);
+    const pct = Math.min(100, Math.round((g.joined / g.threshold)*100));
+    const isUnlocked = g.joined >= g.threshold;
     return `
-    <div class="card card-pad">
-      <span class="category-badge">${CATEGORY_ICON[g.category] || "📦"} ${g.category}</span>
-      <h3>${g.title}</h3>
-      <p class="desc">Hostel pickup target: <b>${g.threshold} ${g.unit}</b> for <b>${g.discountPct}% OFF</b></p>
-      <div class="progress-bar" style="background:#eee; height:8px; border-radius:4px; margin:12px 0; overflow:hidden;">
-        <div style="width:${pct}%; background:var(--gold); height:100%;"></div>
+      <div class="pool-card">
+        <div>
+          <span class="badge badge-featured">${g.discountPct}% OFF UNLOCK</span>
+          <h4 style="margin-top:8px;">${g.title}</h4>
+          <span class="vendor">${g.vendorName}</span>
+        </div>
+        <div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div>
+          <div class="pool-meta" style="margin-top:6px;">
+            <span>${g.joined}/${g.threshold} ${g.unit} joined</span>
+            <span>${pct}% reached</span>
+          </div>
+        </div>
+        ${isUnlocked ? `
+          <div class="pool-unlocked">🎉 Discount Unlocked for group!</div>
+        ` : `
+          <button class="btn btn-gold btn-block btn-sm join-pool-btn" data-id="${g.id}">Join Group Buy Pool</button>
+        `}
       </div>
-      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:12px;">
-        <span>${g.joined} / ${g.threshold} joined</span>
-        <span><b>${pct}%</b> filled</span>
-      </div>
-      <button class="btn btn-gold btn-block btn-sm" onclick="joinPool(${g.id})">Join Group Pool</button>
-    </div>`;
+    `;
   }).join("");
+
+  grid.querySelectorAll(".join-pool-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      if(!currentUser){
+        alert("Please Sign Up or Log In first to join a group buy pool.");
+        openAuthModal("login");
+        return;
+      }
+      const poolId = Number(btn.dataset.id);
+      const pool = groupOrders.find(g=>g.id===poolId);
+      if(pool){
+        pool.joined += 1;
+        addOrderWithWithdrawal({ type: 'pool', title: `Group Buy: ${pool.title}`, vendor: pool.vendorName, poolId });
+        renderPools();
+        renderTicker();
+        updateStats();
+        alert(`You've joined ${pool.title}! You have a 10-minute window to withdraw if you change your mind.`);
+      }
+    });
+  });
 }
 
-function joinPool(id){
-  const pool = groupOrders.find(p => p.id === id);
-  if(pool){
-    pool.joined += 1;
-    renderPools();
-    updateStats();
-    alert(`Joined ${pool.title}! You unlock the group rate as soon as threshold is met.`);
-  }
-}
-
+/* --------------------------- DELIVERY QUEUE --------------------------- */
 function renderQueue(){
   const wrap = document.getElementById("queueWrap");
   wrap.innerHTML = deliveries.map(d=>{
@@ -663,47 +797,22 @@ function renderQueue(){
 }
 
 function addToDeliveryQueue(hall, slot, vendorName, category){
-  let group = deliveries.find(d=>d.hall.toLowerCase()===hall.toLowerCase());
+  let group = deliveries.find(d=>d.hall.toLowerCase()===hall.toLowerCase() && d.slot===slot);
   if(!group){
-    group = { hall, slot:"Today 5:00 PM", orders:[] };
+    group = { hall, slot, orders:[] };
     deliveries.unshift(group);
   }
   group.orders.push({ vendor:vendorName, item:`${category} booking` });
   renderQueue();
+  renderTicker();
 }
 
-function recalcDistances(){
-  vendors.forEach(v => {
-    v.baseDistanceKm = (Math.random() * 1.2 + 0.1).toFixed(1);
-  });
-  renderVendors();
-  alert("Hostel distances recalculated based on your current campus GPS sector!");
-}
-
-function toggleCompare(){
-  compareOpen = !compareOpen;
-  document.getElementById("compareTray").classList.toggle("open", compareOpen);
-  if(compareOpen) renderCompare();
-}
-
-function renderCompare(){
-  const wrap = document.getElementById("compareGrid");
-  const top = [...vendors].sort((a,b)=> reliabilityScore(b.reliability) - reliabilityScore(a.reliability)).slice(0,3);
-  wrap.innerHTML = top.map(v=>`
-    <div style="border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff;">
-      <h4>${v.name}</h4>
-      <p style="font-size:12px; color:var(--ink-soft);">${v.category}</p>
-      <div style="font-size:18px; font-weight:700; color:var(--teal); margin:6px 0;">Score: ${reliabilityScore(v.reliability)}/100</div>
-      <p style="font-size:12px;">Price: ${v.priceLabel}</p>
-    </div>
-  `).join("");
-}
-
+/* --------------------------- STATS --------------------------- */
 function updateStats(){
   document.getElementById("statVendors").textContent = vendors.length;
   document.getElementById("statUnis").textContent = UNIVERSITIES.length;
   document.getElementById("statPools").textContent = groupOrders.length;
 }
 
-// DOM Init Execution
+// Execute on DOM ready
 document.addEventListener("DOMContentLoaded", init);
