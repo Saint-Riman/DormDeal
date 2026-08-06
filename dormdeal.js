@@ -80,9 +80,12 @@ let deliveries = [
 ];
 
 // USER MANAGEMENT & AUTH STATE
-let registeredUsers = []; 
-let currentUser = null; // { name, email, role: 'buyer'|'seller', university, location, phone, picture, businessName, servicesOffered }
-let userOrders = []; // Track orders & pool entries with withdrawal timestamps [{ id, type: 'order'|'pool', title, vendor, timestamp, poolId }]
+let registeredUsers = [
+  { name: "Demo Student", email: "student@cu.edu.ng", password: "password123", role: "buyer", university: "Covenant University", location: "Mary Hall, Room 204", phone: "08012345678", picture: "https://via.placeholder.com/150", businessName: "", servicesOffered: [] },
+  { name: "Demo Vendor", email: "vendor@cu.edu.ng", password: "password123", role: "seller", university: "Covenant University", location: "Hostel Mall, Shop B", phone: "08087654321", picture: "https://via.placeholder.com/150", businessName: "QuickFix Clinic", servicesOffered: ["Tech Repair"] }
+]; 
+let currentUser = null; 
+let userOrders = []; 
 
 let activeUni = "Covenant University";
 let activeCategory = "All";
@@ -132,6 +135,15 @@ function populateSelect(select, options, withAll){
   });
 }
 
+function openModal(id){ document.getElementById(id).classList.add("open"); }
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+function closeHamburgerMenu(){
+  document.getElementById("hamburgerBtn").classList.remove("open");
+  document.getElementById("navDrawer").classList.remove("open");
+  document.getElementById("navOverlay").classList.remove("open");
+}
+
 function init(){
   populateSelect(document.getElementById("uniSelect"), UNIVERSITIES, false);
   document.getElementById("uniSelect").value = activeUni;
@@ -171,10 +183,7 @@ function init(){
   // Auth Tabs Toggle
   document.querySelectorAll("[data-authtab]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      document.querySelectorAll("[data-authtab]").forEach(b=>b.classList.remove("active"));
-      document.querySelectorAll("#authModal .tab-panel").forEach(p=>p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(btn.dataset.authtab).classList.add("active");
+      switchAuthTab(btn.dataset.authtab);
     });
   });
 
@@ -195,16 +204,41 @@ function init(){
   document.getElementById("loginForm").addEventListener("submit", handleLogin);
 
   // Start Withdrawal Window Clock Tick
-  setInterval(renderActiveOrders, 10000); // refresh active orders view every 10s for live timers
+  setInterval(renderActiveOrders, 10000); 
 }
 
 /* ------------------ AUTHENTICATION & PROFILE LOGIC ------------------ */
+function switchAuthTab(targetTabId){
+  document.querySelectorAll("[data-authtab]").forEach(b => {
+    if(b.dataset.authtab === targetTabId) b.classList.add("active");
+    else b.classList.remove("active");
+  });
+
+  document.querySelectorAll("#authModal .tab-panel").forEach(p => {
+    if(p.id === targetTabId) p.classList.add("active");
+    else p.classList.remove("active");
+  });
+
+  // Toggle required state on inputs to prevent cross-tab validation issues
+  const signupInputs = document.querySelectorAll("#signupTab input, #signupTab select");
+  const loginInputs = document.querySelectorAll("#loginTab input, #loginTab select");
+
+  if(targetTabId === "signupTab"){
+    signupInputs.forEach(i => { if(i.dataset.required) i.required = true; });
+    loginInputs.forEach(i => { if(i.required) { i.dataset.required = "true"; i.required = false; } });
+  } else {
+    loginInputs.forEach(i => { if(i.dataset.required) i.required = true; });
+    signupInputs.forEach(i => { if(i.required) { i.dataset.required = "true"; i.required = false; } });
+  }
+}
+
 function openAuthModal(mode){
+  closeHamburgerMenu();
   openModal("authModal");
   if(mode === "login"){
-    document.getElementById("tabLoginBtn").click();
+    switchAuthTab("loginTab");
   } else {
-    document.getElementById("tabSignupBtn").click();
+    switchAuthTab("signupTab");
   }
 }
 
@@ -251,7 +285,6 @@ function handleSignup(e){
   registeredUsers.push(newUser);
   currentUser = newUser;
 
-  // If user registered as seller, add them live to the vendor directory!
   if(role === "seller"){
     vendors.unshift({
       id: Date.now(),
@@ -290,7 +323,7 @@ function handleLogin(e){
 
   const user = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === role && u.password === password);
   if(!user){
-    alert("Invalid credentials or role selection. Please verify email, password, and account type.");
+    alert("Invalid credentials or role selection.\n\nTip: You can use demo accounts:\n• Buyer: student@cu.edu.ng / password123\n• Seller: vendor@cu.edu.ng / password123");
     return;
   }
 
@@ -318,7 +351,6 @@ function finishAuth(){
 function openProfileModal(){
   if(!currentUser) return;
   const view = document.getElementById("profileModalView");
-  
   const isSeller = currentUser.role === "seller";
   
   view.innerHTML = `
@@ -345,7 +377,6 @@ function openProfileModal(){
       </div>
     ` : ''}
   `;
-
   openModal("profileModal");
 }
 
@@ -355,73 +386,60 @@ function initHamburgerMenu(){
   const drawer = document.getElementById("navDrawer");
   const overlay = document.getElementById("navOverlay");
 
-  if(!btn || !drawer || !overlay) return;
-
-  function openDrawer(){
-    btn.classList.add("open");
-    drawer.classList.add("open");
-    overlay.classList.add("open");
-    btn.setAttribute("aria-expanded", "true");
-  }
-
-  function closeDrawer(){
-    btn.classList.remove("open");
-    drawer.classList.remove("open");
-    overlay.classList.remove("open");
-    btn.setAttribute("aria-expanded", "false");
-  }
-
   btn.addEventListener("click", ()=>{
-    if(drawer.classList.contains("open")) closeDrawer();
-    else openDrawer();
+    const open = drawer.classList.toggle("open");
+    btn.classList.toggle("open", open);
+    overlay.classList.toggle("open", open);
   });
 
-  overlay.addEventListener("click", closeDrawer);
-  updateHamburgerUserMenu();
+  overlay.addEventListener("click", closeHamburgerMenu);
+  
+  drawer.querySelectorAll("a").forEach(a=>{
+    a.addEventListener("click", closeHamburgerMenu);
+  });
 }
 
 function updateHamburgerUserMenu(){
   const badge = document.getElementById("drawerUserBadge");
-  const nameLabel = document.getElementById("drawerUserName");
-  const roleLabel = document.getElementById("drawerUserRole");
+  const name = document.getElementById("drawerUserName");
+  const role = document.getElementById("drawerUserRole");
   const footer = document.getElementById("drawerAuthFooter");
 
-  if(!currentUser){
+  if(currentUser){
+    badge.textContent = currentUser.role === 'buyer' ? '🎓 Buyer Active' : '🏪 Seller Active';
+    name.textContent = currentUser.name;
+    role.textContent = currentUser.email;
+    footer.style.display = "none";
+  } else {
     badge.textContent = "👤 Guest Mode";
-    nameLabel.textContent = "Welcome, Guest";
-    roleLabel.textContent = "Please sign up or log in";
-    footer.innerHTML = `
-      <div class="row-2">
-        <button class="btn btn-ghost btn-block" onclick="openAuthModal('login')">Log in</button>
-        <button class="btn btn-gold btn-block" onclick="openAuthModal('signup')">Sign Up</button>
-      </div>`;
-    return;
+    name.textContent = "Welcome, Guest";
+    role.textContent = "Select Buyer or Seller to continue";
+    footer.style.display = "block";
   }
-
-  const isBuyer = currentUser.role === "buyer";
-  badge.textContent = isBuyer ? "🎓 Buyer" : "🏪 Seller";
-  nameLabel.textContent = currentUser.name;
-  roleLabel.textContent = currentUser.university;
-  
-  footer.innerHTML = `
-    <button class="btn btn-teal btn-block" onclick="openProfileModal()">View My Profile 👤</button>
-    <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="handleLogout()">Logout</button>
-  `;
 }
 
-/* ------------------ WITHDRAWAL & ORDER MANAGEMENT ------------------ */
-function addOrderWithWithdrawal(item){
-  const orderObj = {
+/* --------------------------- RECALCULATE DISTANCES --------------------------- */
+function recalcDistances(){
+  vendors.forEach(v => {
+    v.baseDistanceKm = Number((Math.random() * 1.5 + 0.1).toFixed(1));
+  });
+  renderVendors();
+  alert("Hostel location scanned! Distances updated for your campus section.");
+}
+
+/* --------------------------- WITHDRAWAL & ORDERS --------------------------- */
+function addOrderWithWithdrawal(orderData){
+  const newOrder = {
     id: Date.now(),
-    timestamp: Date.now(),
-    ...item
+    ...orderData,
+    timestamp: Date.now()
   };
-  userOrders.unshift(orderObj);
+  userOrders.unshift(newOrder);
   renderActiveOrders();
 }
 
-function withdrawOrder(id){
-  const idx = userOrders.findIndex(o => o.id === id);
+function withdrawOrder(orderId){
+  const idx = userOrders.findIndex(o => o.id === orderId);
   if(idx === -1) return;
 
   const order = userOrders[idx];
@@ -432,7 +450,6 @@ function withdrawOrder(id){
     return;
   }
 
-  // If order was a pool join, reduce pool count
   if(order.type === 'pool' && order.poolId){
     const pool = groupOrders.find(g => g.id === order.poolId);
     if(pool && pool.joined > 0){
@@ -464,7 +481,6 @@ function renderActiveOrders(){
     const windowSecs = 10 * 60;
     const remainingSecs = Math.max(0, windowSecs - elapsedSecs);
     const canWithdraw = remainingSecs > 0;
-
     const mins = Math.floor(remainingSecs / 60);
     const secs = remainingSecs % 60;
 
@@ -499,10 +515,15 @@ function renderTicker(){
 
 /* ------------------------- CATEGORY CHIPS ------------------------- */
 function renderCategoryChips(){
-  const wrap = document.getElementById("categoryChips");
-  const cats = ["All", ...CATEGORIES];
-  wrap.innerHTML = cats.map(c=>`<button class="chip ${c===activeCategory?'active':''}" data-cat="${c}">${c}</button>`).join("");
-  wrap.querySelectorAll(".chip").forEach(chip=>{
+  const row = document.getElementById("categoryChips");
+  const allCats = ["All", ...CATEGORIES];
+  row.innerHTML = allCats.map(cat => `
+    <button class="chip ${cat===activeCategory ? 'active':''}" data-cat="${cat}">
+      ${cat==="All" ? '✨ All' : `${CATEGORY_ICON[cat]||''} ${cat}`}
+    </button>
+  `).join("");
+
+  row.querySelectorAll(".chip").forEach(chip=>{
     chip.addEventListener("click", ()=>{
       activeCategory = chip.dataset.cat;
       renderCategoryChips();
@@ -512,29 +533,19 @@ function renderCategoryChips(){
   });
 }
 
-/* --------------------------- DISTANCE --------------------------- */
-function recalcDistances(){
-  vendors.forEach(v=>{
-    const jitter = (Math.random()*0.3 - 0.15);
-    v.liveDistance = Math.max(0.05, v.baseDistanceKm + jitter);
-  });
-  renderVendors();
-  const btn = document.getElementById("scanLocationBtn");
-  const old = btn.textContent;
-  btn.textContent = "✓ Distances updated";
-  setTimeout(()=>btn.textContent = old, 1600);
-}
-function distanceOf(v){ return v.liveDistance !== undefined ? v.liveDistance : v.baseDistanceKm; }
-
-/* --------------------------- DIRECTORY --------------------------- */
 function filteredVendors(){
-  return vendors.filter(v=>{
-    const uniOk = activeUni === "All" || v.university === activeUni;
-    const catOk = activeCategory === "All" || v.category === activeCategory;
-    return uniOk && catOk;
-  }).sort((a,b)=>distanceOf(a)-distanceOf(b));
+  return vendors.filter(v => {
+    const uniMatch = activeUni === "All" || v.university.toLowerCase() === activeUni.toLowerCase();
+    const catMatch = activeCategory === "All" || v.category === activeCategory;
+    return uniMatch && catMatch;
+  });
 }
 
+function distanceOf(v){
+  return v.baseDistanceKm;
+}
+
+/* --------------------------- VENDOR DIRECTORY --------------------------- */
 function renderVendors(){
   const list = filteredVendors();
   document.getElementById("resultsCount").textContent = `${list.length} result${list.length!==1?'s':''}`;
@@ -550,29 +561,29 @@ function renderVendors(){
     const rel = reliabilityLabel(score);
     const rating = avgRating(v);
     return `
-    <article class="card" data-id="${v.id}">
-      <div class="card-top">
-        <div class="avatar">${CATEGORY_ICON[v.category] || "🏬"}</div>
-        ${v.featured ? '<span class="badge badge-featured">Featured</span>' : ''}
-      </div>
-      <div>
-        <h4>${v.name}</h4>
-        <span class="cat">${v.category} · ${v.university.split(" (")[0]}</span>
-      </div>
-      <p class="desc">${v.description}</p>
-      ${v.discount ? `<span class="discount-tag">${v.discount}</span>` : ''}
-      <div class="meta-row">
-        <span>📍 ${distanceOf(v).toFixed(1)} mi · ${v.location}</span>
-        <span class="reli"><span class="reli-dot" style="background:${rel.color};"></span>${rel.label}</span>
-      </div>
-      <div class="meta-row" style="border-top:none; padding-top:0;">
-        <span class="price-tag">${v.priceLabel}</span>
-        <span>${rating ? `${starString(rating)} (${v.reviews.length})` : 'No reviews yet'}</span>
-      </div>
-      <div class="card-actions">
-        <button class="btn btn-outline-dark btn-sm btn-block open-profile" data-id="${v.id}">View & Book</button>
-      </div>
-    </article>`;
+      <article class="card" data-id="${v.id}">
+        <div class="card-top">
+          <div class="avatar">${CATEGORY_ICON[v.category] || "🏬"}</div>
+          ${v.featured ? '<span class="badge badge-featured">Featured</span>' : ''}
+        </div>
+        <div>
+          <h4>${v.name}</h4>
+          <span class="cat">${v.category} · ${v.university.split(" (")[0]}</span>
+        </div>
+        <p class="desc">${v.description}</p>
+        ${v.discount ? `<span class="discount-tag">${v.discount}</span>` : ''}
+        <div class="meta-row">
+          <span>📍 ${distanceOf(v).toFixed(1)} mi · ${v.location}</span>
+          <span class="reli"><span class="reli-dot" style="background:${rel.color};"></span>${rel.label}</span>
+        </div>
+        <div class="meta-row" style="border-top:none; padding-top:0;">
+          <span class="price-tag">${v.priceLabel}</span>
+          <span>${rating ? `${starString(rating)} (${v.reviews.length})` : 'No reviews yet'}</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-outline-dark btn-sm btn-block open-profile" data-id="${v.id}">View & Book</button>
+        </div>
+      </article>`;
   }).join("");
 
   grid.querySelectorAll(".open-profile").forEach(btn=>{
@@ -587,93 +598,112 @@ function toggleCompare(){
   document.getElementById("compareToggle").classList.toggle("btn-teal", compareOpen);
   if(compareOpen) renderCompare();
 }
+
 function renderCompare(){
   const list = filteredVendors();
   const minPrice = Math.min(...list.map(v=>v.price));
+
   const rows = list.map(v=>{
     const score = reliabilityScore(v.reliability);
     const isLowest = v.price === minPrice;
     return `<tr class="${isLowest ? 'row-highlight':''}">
-      <td>${v.name}</td>
-      <td>${v.category}</td>
-      <td class="${isLowest?'lowest':''}">${v.priceLabel}${isLowest ? ' ✓ lowest' : ''}</td>
-      <td>${score}/100</td>
-      <td>${distanceOf(v).toFixed(1)} mi</td>
+      <td><b>${v.name}</b><br><small style="color:var(--ink-soft);">${v.location}</small></td>
+      <td>${v.priceLabel} ${isLowest ? '<span class="badge badge-featured" style="font-size:9px;">Best Price</span>':''}</td>
+      <td><span class="reli"><span class="reli-dot" style="background:${reliabilityLabel(score).color};"></span>${score}/100</span></td>
+      <td>${(v.reliability.onTimeRate*100).toFixed(0)}%</td>
+      <td>${v.reliability.avgResponseMins}m</td>
+      <td><button class="btn btn-teal btn-sm open-profile" data-id="${v.id}">Book</button></td>
     </tr>`;
   }).join("");
+
   document.getElementById("compareArea").innerHTML = `
-    <div class="compare-wrap">
-      <table>
-        <thead><tr><th>Seller</th><th>Category</th><th>Price</th><th>Reliability</th><th>Distance</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="5" style="text-align:center; padding:20px;">No sellers to compare.</td></tr>`}</tbody>
+    <div style="overflow-x:auto; background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);">
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+        <thead>
+          <tr style="text-align:left; border-bottom:1px solid var(--line); font-family:var(--font-mono); font-size:11px; text-transform:uppercase;">
+            <th style="padding:10px;">Seller</th>
+            <th style="padding:10px;">Price</th>
+            <th style="padding:10px;">Score</th>
+            <th style="padding:10px;">On-Time</th>
+            <th style="padding:10px;">Response</th>
+            <th style="padding:10px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
       </table>
     </div>`;
+
+  document.querySelectorAll("#compareArea .open-profile").forEach(btn=>{
+    btn.addEventListener("click", ()=>openVendorProfile(Number(btn.dataset.id)));
+  });
 }
 
-/* --------------------------- VENDOR MODAL & BOOKING --------------------------- */
+/* --------------------------- VENDOR MODAL --------------------------- */
 function openVendorProfile(id){
-  activeVendorId = id;
-  renderVendorModal();
-  openModal("vendorModal");
-}
-
-function renderVendorModal(){
-  const v = vendors.find(x=>x.id===activeVendorId);
+  const v = vendors.find(x=>x.id===id);
   if(!v) return;
+  activeVendorId = id;
   const score = reliabilityScore(v.reliability);
   const rel = reliabilityLabel(score);
+  const rating = avgRating(v);
 
-  const timeSlots = ["9:00 AM","11:00 AM","1:00 PM","3:00 PM","5:00 PM","7:00 PM"];
-
-  document.getElementById("vendorModalContent").innerHTML = `
+  const modal = document.getElementById("vendorModalContent");
+  modal.innerHTML = `
     <button class="modal-close" data-close="vendorModal">✕</button>
-    <div class="profile-head">
-      <div class="avatar">${CATEGORY_ICON[v.category] || "🏬"}</div>
+    <div style="display:flex; gap:16px; align-items:center; margin-bottom:12px;">
+      <div class="avatar" style="width:56px; height:56px; font-size:26px;">${CATEGORY_ICON[v.category] || "🏬"}</div>
       <div>
         <h3>${v.name}</h3>
-        <span class="sub" style="margin:0;">${v.category} · ${v.university}</span>
+        <span class="cat" style="font-family:var(--font-mono); font-size:12px; color:var(--teal);">${v.category} · ${v.university}</span>
       </div>
     </div>
-    <p style="font-size:14px; color:var(--ink-soft); margin-top:10px;">${v.description}</p>
-    <div class="contact-row">
-      <span class="contact-pill">📍 ${v.location}</span>
-      <span class="contact-pill">☎ ${v.phone}</span>
-      <span class="contact-pill">💰 ${v.priceLabel}</span>
+    <p class="sub" style="margin-bottom:12px;">${v.description}</p>
+    
+    <div class="score-box">
+      <div class="score-ring" style="background:${rel.color};">${score}</div>
+      <div class="score-detail">
+        <b>Reliability Score (${rel.label})</b><br>
+        On-time rate: ${(v.reliability.onTimeRate*100).toFixed(0)}% · 
+        Cancellation: ${(v.reliability.cancellationRate*100).toFixed(0)}% · 
+        Avg response: ${v.reliability.avgResponseMins} mins
+      </div>
     </div>
 
     ${v.servicesOffered && v.servicesOffered.length ? `
-      <div style="margin-top:10px;">
-        <label style="font-size:11px; font-weight:700; text-transform:uppercase;">Services Offered:</label>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px; font-family:var(--font-mono); text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom:6px;">Services & Rates</label>
         <div class="tag-list">
           ${v.servicesOffered.map(s=>`<span class="tag">${s}</span>`).join("")}
         </div>
       </div>
     ` : ''}
 
-    <div class="score-wrap">
-      <div class="score-ring" style="background:${rel.color};">${score}</div>
-      <div class="score-detail">
-        <b style="font-size:14px;">${rel.label} reliability</b><br>
-        On-time ${Math.round(v.reliability.onTimeRate*100)}% · Cancels ${Math.round(v.reliability.cancellationRate*100)}%
-      </div>
+    <div class="contact-row">
+      <a href="https://wa.me/${v.whatsapp}" target="_blank" class="contact-btn contact-wa">💬 WhatsApp Seller</a>
+      <a href="tel:${v.phone}" class="contact-btn contact-ph">📞 Call ${v.phone}</a>
     </div>
 
-    <div class="tab-panel active" id="bookPanel">
-      <form id="bookForm">
+    <div style="margin-top:20px; border-top:1px solid var(--line); padding-top:16px;">
+      <h4>Book / Request Service</h4>
+      <form id="bookForm" style="margin-top:10px;">
         <div class="row-2">
-          <div class="field"><label>Date</label><input type="date" id="bookDate" required></div>
-          <div class="field"><label>Time slot</label>
-            <select id="bookSlot">${timeSlots.map(t=>`<option>${t}</option>`).join("")}</select>
+          <div class="field"><label>Preferred Date</label><input type="date" id="bookDate" required></div>
+          <div class="field"><label>Delivery Slot</label>
+            <select id="bookSlot">
+              <option>Morning (9:00 - 12:00)</option>
+              <option>Afternoon (12:00 - 16:00)</option>
+              <option>Evening (16:00 - 20:00)</option>
+            </select>
           </div>
         </div>
-        <div class="field"><label>Delivery hostel/location</label>
-          <input type="text" id="bookHall" placeholder="e.g. Peniel Hall Room 102" required>
-        </div>
-        <button type="submit" class="btn btn-gold btn-block">Place Order — Instant Confirmation</button>
+        <div class="field"><label>Hostel / Delivery Hall</label><input type="text" id="bookHall" required placeholder="e.g. Peniel Hall, Room 102"></div>
+        <button class="btn btn-gold btn-block" type="submit">Place Order — Instant Confirmation</button>
       </form>
       <div class="confirm-box" id="bookConfirm"></div>
     </div>
   `;
+
+  openModal("vendorModal");
 
   document.querySelectorAll("#vendorModalContent .modal-close").forEach(btn=>{
     btn.addEventListener("click", ()=>closeModal(btn.dataset.close));
@@ -686,21 +716,12 @@ function renderVendorModal(){
       openAuthModal("login");
       return;
     }
-
-    const date = document.getElementById("bookDate").value;
     const slot = document.getElementById("bookSlot").value;
     const hall = document.getElementById("bookHall").value;
-    
     const box = document.getElementById("bookConfirm");
     box.classList.add("show");
     box.innerHTML = `<b>Order Confirmed ✓</b><br>You have 10 minutes to withdraw this order if needed.<br>Delivery to: ${hall}`;
-
-    addOrderWithWithdrawal({
-      type: 'order',
-      title: `${v.category} Order`,
-      vendor: v.name
-    });
-
+    addOrderWithWithdrawal({ type: 'order', title: `${v.category} Order`, vendor: v.name });
     if(hall){
       addToDeliveryQueue(hall, slot, v.name, v.category);
     }
@@ -709,45 +730,49 @@ function renderVendorModal(){
 
 /* --------------------------- GROUP BUY POOLS --------------------------- */
 function renderPools(){
-  const wrap = document.getElementById("poolGrid");
-  wrap.innerHTML = groupOrders.map(g=>{
-    const pct = Math.min(100, Math.round((g.joined/g.threshold)*100));
-    const unlocked = g.joined >= g.threshold;
+  const grid = document.getElementById("poolGrid");
+  grid.innerHTML = groupOrders.map(g=>{
+    const pct = Math.min(100, Math.round((g.joined / g.threshold)*100));
+    const isUnlocked = g.joined >= g.threshold;
     return `
-    <div class="pool-card">
-      <span class="cat">${g.category}</span>
-      <h4>${g.title}</h4>
-      <p style="font-size:12.5px; color:var(--paper-dim);">${g.vendorName} · ${g.windowLabel}</p>
-      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
-      <div class="pool-meta"><span>${g.joined}/${g.threshold} ${g.unit} joined</span><span>${g.discountPct}% off at threshold</span></div>
-      ${unlocked
-        ? `<div class="pool-unlocked">🎉 Bulk discount unlocked — pool complete</div>`
-        : `<button class="btn btn-teal btn-block btn-sm join-pool" data-id="${g.id}">Join this pool</button>`}
-    </div>`;
+      <div class="pool-card">
+        <div>
+          <span class="badge badge-featured">${g.discountPct}% OFF UNLOCK</span>
+          <h4 style="margin-top:8px;">${g.title}</h4>
+          <span class="vendor">${g.vendorName}</span>
+        </div>
+        <div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div>
+          <div class="pool-meta" style="margin-top:6px;">
+            <span>${g.joined}/${g.threshold} ${g.unit} joined</span>
+            <span>${pct}% reached</span>
+          </div>
+        </div>
+        ${isUnlocked ? `
+          <div class="pool-unlocked">🎉 Discount Unlocked for group!</div>
+        ` : `
+          <button class="btn btn-gold btn-block btn-sm join-pool-btn" data-id="${g.id}">Join Group Buy Pool</button>
+        `}
+      </div>
+    `;
   }).join("");
 
-  wrap.querySelectorAll(".join-pool").forEach(btn=>{
+  grid.querySelectorAll(".join-pool-btn").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       if(!currentUser){
-        alert("Please Sign Up or Log In first to join group buys.");
+        alert("Please Sign Up or Log In first to join a group buy pool.");
         openAuthModal("login");
         return;
       }
-
-      const g = groupOrders.find(x=>x.id===Number(btn.dataset.id));
-      if(g && g.joined < g.threshold){
-        g.joined += 1;
-
-        addOrderWithWithdrawal({
-          type: 'pool',
-          poolId: g.id,
-          title: `Group Buy: ${g.title}`,
-          vendor: g.vendorName
-        });
-
+      const poolId = Number(btn.dataset.id);
+      const pool = groupOrders.find(g=>g.id===poolId);
+      if(pool){
+        pool.joined += 1;
+        addOrderWithWithdrawal({ type: 'pool', title: `Group Buy: ${pool.title}`, vendor: pool.vendorName, poolId });
         renderPools();
         renderTicker();
         updateStats();
+        alert(`You've joined ${pool.title}! You have a 10-minute window to withdraw if you change your mind.`);
       }
     });
   });
@@ -782,13 +807,12 @@ function addToDeliveryQueue(hall, slot, vendorName, category){
   renderTicker();
 }
 
-/* --------------------------- UTILS & STATS --------------------------- */
-function openModal(id){ document.getElementById(id).classList.add("open"); }
-function closeModal(id){ document.getElementById(id).classList.remove("open"); }
-
+/* --------------------------- STATS --------------------------- */
 function updateStats(){
   document.getElementById("statVendors").textContent = vendors.length;
-  document.getElementById("statPools").textContent = groupOrders.filter(g=>g.joined < g.threshold).length;
+  document.getElementById("statUnis").textContent = UNIVERSITIES.length;
+  document.getElementById("statPools").textContent = groupOrders.length;
 }
 
-init();
+// Execute on DOM ready
+document.addEventListener("DOMContentLoaded", init);
