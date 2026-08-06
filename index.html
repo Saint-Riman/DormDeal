@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dorm Deal — At Dorm Deal, The Deal Is Done</title>
+<link rel="stylesheet" href="dormdeal.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="ticker" id="tickerTrack"></div>
+</div>
+
+<header class="site">
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand">
+        <span class="mark">DORM<em>DEAL</em></span>
+      </div>
+      <div class="nav-actions">
+        <span class="greet" id="greetText">Not signed in</span>
+        <button class="btn btn-ghost btn-sm" id="openAuthBtn">Sign up / Log in</button>
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle Navigation Menu" aria-expanded="false">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="nav-overlay" id="navOverlay"></div>
+    <aside class="nav-drawer" id="navDrawer">
+      <div class="drawer-header">
+        <span class="mark">DORM<em>DEAL</em></span>
+        <div class="user-info">
+          <span class="badge badge-featured" id="drawerUserBadge">👤 Not signed in</span>
+          <h4 id="drawerUserName">Welcome, Guest</h4>
+          <p id="drawerUserRole">Sign in to book or list services</p>
+        </div>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-section">
+          <h5>Quick Navigation</h5>
+          <ul class="drawer-menu" id="drawerDynamicLinks">
+            <li><a href="#directory">🔍 Browse Directory</a></li>
+            <li><a href="#groupbuy">🔥 Group Buys</a></li>
+            <li><a href="#delivery">🛵 Delivery Batches</a></li>
+          </ul>
+        </div>
+        <div class="drawer-section">
+          <h5>Platform Trust</h5>
+          <ul class="drawer-menu">
+            <li><a href="#how">⭐ Reliability Score Breakdown</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <button class="btn btn-gold btn-block" id="drawerAuthBtn">Sign up / Log in</button>
+      </div>
+    </aside>
+
+    <div class="hero">
+      <div>
+        <span class="hero-eyebrow">Campus commerce, out of the DMs</span>
+        <h1>At Dorm Deal, <span class="accent">the deal is done.</span></h1>
+        <p class="tagline">One place for every student hustle near your hostel — printing, tech repair, tailoring, food, hair, and errands — with real prices, real delivery windows, and reliability scores vendors actually earn.</p>
+     
+        <div class="stats">
+          <div class="stat"><b id="statVendors">0</b><span>Active Vendors</span></div>
+          <div class="stat"><b id="statUnis">12</b><span>Nigerian Campuses</span></div>
+          <div class="stat"><b id="statPools">0</b><span>Group Buys Live</span></div>
+        </div>
+      </div>
+
+      <div class="hero-panel">
+        <h3>Find what you need on campus</h3>
+        <div class="field">
+          <label for="uniSelect">Your university</label>
+          <select id="uniSelect"></select>
+        </div>
+        <div class="field">
+          <label>Service category</label>
+          <div class="chip-row" id="categoryChips"></div>
+        </div>
+        <button class="btn btn-teal btn-block" id="scanLocationBtn">📍 Recalculate distances from my hostel</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="block" id="directory">
+  <div class="wrap">
+    
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Business Directory</span>
+        <h2>Vendors near you</h2>
+        <p class="sub">Featured cards are paid placements chosen by vendors — every listing still shows the same real distance, price and reliability data.</p>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span class="count-pill" id="resultsCount">0 results</span>
+        <button class="btn btn-outline-dark btn-sm" id="compareToggle">⇄ Compare prices</button>
+      </div>
+    </div>
+
+    <div id="compareArea" style="display:none; margin-bottom:26px;"></div>
+
+    <div class="grid" id="vendorGrid"></div>
+  </div>
+</section>
+
+<section class="block" id="groupbuy" style="background:var(--paper-dim);">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">AI-Pooled Group Buys</span>
+        <h2>Join a pool, unlock a discount</h2>
+        <p class="sub">Dorm Deal groups students asking for similar items in the same time window, then offers the vendor a bulk-order tier once the pool fills.</p>
+      </div>
+    </div>
+    
+    <div class="pool-grid" id="poolGrid"></div>
+  </div>
+</section>
+
+<section class="block" id="delivery">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Shared Delivery Pooling</span>
+        <h2>One runner, many orders</h2>
+        <p class="sub">Orders headed to the same hall in the same slot are batched into a single runner trip instead of five separate ones.</p>
+      </div>
+    </div>
+    <div class="queue-wrap" id="queueWrap"></div>
+  </div>
+</section>
+
+<section class="block" id="how" style="background:var(--paper-dim);">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Trust, not just stars</span>
+        <h2>How the reliability score works</h2>
+      </div>
+    </div>
+    <div class="explain-grid">
+      <div class="explain-card">
+        <span class="num">01 — On-time rate</span>
+        <h4>Did the order arrive when promised?</h4>
+        <p>Tracked automatically from booking confirmations vs. actual completion time. Weighted heaviest, since it's what students feel most.</p>
+      </div>
+      <div class="explain-card">
+        <span class="num">02 — Cancellation rate</span>
+        <h4>How often does the vendor bail?</h4>
+        <p>Confirmed orders the vendor cancelled after acceptance. A high rate drags the score down even if reviews are glowing.</p>
+      </div>
+      <div class="explain-card">
+        <span class="num">03 — Response time</span>
+        <h4>How fast do they reply to a booking?</h4>
+        <p>Average minutes between a student's request and vendor confirmation. Fast responders score higher on this factor.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="mark">DORM DEAL</span>
+    <small>Prototype build · Covenant University pilot · all data on this page is simulated for demo purposes</small>
+  </div>
+</footer>
+
+<div class="modal-backdrop" id="authModal">
+  <div class="modal">
+    <button class="modal-close" data-close="authModal">✕</button>
+    <h3>Get on Dorm Deal</h3>
+    <p class="sub">Students and vendors sign up separately — vendors get a listing, students get access to bookings and group buys.</p>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="studentTab">I'm a student</button>
+      <button class="tab-btn" data-tab="vendorTab">I'm a vendor</button>
+    </div>
+
+    <div class="tab-panel active" id="studentTab">
+      <form id="studentForm">
+        <div class="field"><label>Full name</label><input type="text" required placeholder="e.g. Ada Nwosu"></div>
+        <div class="row-2">
+          <div class="field"><label>Student email or ID</label><input type="text" required placeholder="ada.nwosu@stu.cu.edu.ng"></div>
+          <div class="field"><label>University</label><select id="studentUniInput"></select></div>
+        </div>
+        <div class="field"><label>Password</label><input type="password" required placeholder="••••••••"></div>
+        <button class="btn btn-gold btn-block" type="submit">Create student account</button>
+      </form>
+    </div>
+
+    <div class="tab-panel" id="vendorTab">
+      <form id="vendorForm">
+        <div class="field"><label>Business name</label><input type="text" required placeholder="e.g. QuickFix Gadget Clinic"></div>
+        <div class="row-2">
+          <div class="field"><label>Contact email</label><input type="email" required placeholder="you@business.ng"></div>
+          <div class="field"><label>Primary category</label>
+            <select id="vendorCategoryInput"></select>
+          </div>
+        </div>
+        <div class="field"><label>Password</label><input type="password" required placeholder="••••••••"></div>
+        <button class="btn btn-teal btn-block" type="submit">Create vendor account</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="vendorModal">
+  <div class="modal" id="vendorModalContent">
+    <button class="modal-close" data-close="vendorModal">✕</button>
+    </div>
+</div>
+
+<script src="dormdeal.js"></script>
+</body>
+</html>
