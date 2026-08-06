@@ -118,31 +118,34 @@
   <div class="wrap">
     <div class="section-head">
       <div>
-        <span class="eyebrow">Business Directory</span>
-        <h2>Sellers near you</h2>
-        <p class="sub">Featured cards are verified campus listings — every seller profile displays clear campus location, prices, and reliability metrics.</p>
+        <span class="eyebrow">Verified Campus Sellers</span>
+        <h2>Directory & Instant Quote Matrix</h2>
+        <p class="sub">Showing services available at <strong id="currentUniLabel">Covenant University</strong>. Distance recalculated from your campus sector.</p>
       </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <span class="count-pill" id="resultsCount">0 results</span>
-        <button class="btn btn-outline-dark btn-sm" id="compareToggle">⇄ Compare prices</button>
+      <div class="controls">
+        <button class="btn btn-outline-dark btn-sm" id="compareToggle">⇄ Compare Top 3 Side-by-Side</button>
       </div>
     </div>
 
-    <div id="compareArea" style="display:none; margin-bottom:26px;"></div>
+    <div class="compare-tray" id="compareTray">
+      <div class="compare-grid" id="compareGrid"></div>
+    </div>
+
     <div class="grid" id="vendorGrid"></div>
   </div>
 </section>
 
-<section class="block" id="groupbuy" style="background:var(--paper-dim);">
+<section class="block bg-dim" id="groupbuy">
   <div class="wrap">
     <div class="section-head">
       <div>
-        <span class="eyebrow">AI-Pooled Group Buys</span>
-        <h2>Join a pool, unlock a discount</h2>
-        <p class="sub">Dorm Deal groups Buyers asking for similar items in the same time window to unlock wholesale rates from campus Sellers.</p>
+        <span class="eyebrow">Power in Numbers</span>
+        <h2>Active Group-Buy Pools</h2>
+        <p class="sub">Join fellow students in your hostel cluster. When the target volume is hit, everyone unlocks the discounted rate.</p>
       </div>
     </div>
-    <div class="pool-grid" id="poolGrid"></div>
+
+    <div class="grid" id="poolsGrid"></div>
   </div>
 </section>
 
@@ -150,165 +153,169 @@
   <div class="wrap">
     <div class="section-head">
       <div>
-        <span class="eyebrow">Shared Delivery Pooling</span>
-        <h2>One runner, many orders</h2>
-        <p class="sub">Orders headed to the same hall in the same slot are batched into a single runner trip instead of multiple separate ones.</p>
+        <span class="eyebrow">Batch Logistics</span>
+        <h2>Hostel Delivery & Pickup Windows</h2>
+        <p class="sub">Runners drop off multiple orders at once per hall, keeping individual delivery fees under ₦150.</p>
       </div>
     </div>
-    <div class="queue-wrap" id="queueWrap"></div>
+
+    <div class="queue-grid" id="queueWrap"></div>
   </div>
 </section>
 
-<section class="block" id="how" style="background:var(--paper-dim);">
+<section class="block bg-dim" id="how">
   <div class="wrap">
     <div class="section-head">
       <div>
-        <span class="eyebrow">Trust, not just stars</span>
-        <h2>How the reliability score works</h2>
+        <span class="eyebrow">How Trust Works</span>
+        <h2>The Reliability Score Engine</h2>
+        <p class="sub">No fake 5-star reviews. Scores update algorithmically based on real fulfillment data.</p>
       </div>
     </div>
-    <div class="explain-grid">
-      <div class="explain-card">
-        <span class="num">01 — On-time rate</span>
-        <h4>Did the order arrive when promised?</h4>
-        <p>Tracked automatically from booking confirmations vs. actual completion time. Weighted heaviest for student peace of mind.</p>
+
+    <div class="grid grid-3">
+      <div class="card card-pad">
+        <div class="icon-bubble">⏱️</div>
+        <h4>On-Time Completion Rate (50%)</h4>
+        <p>Tracks whether deliveries or service handovers occur within the promised timeframe for that specific hostel.</p>
       </div>
-      <div class="explain-card">
-        <span class="num">02 — Cancellation rate</span>
-        <h4>How often does the Seller bail?</h4>
-        <p>Tracks orders cancelled by the Seller after acceptance. High cancellation rates significantly drop overall scores.</p>
+      <div class="card card-pad">
+        <div class="icon-bubble">🚫</div>
+        <h4>Low Cancellation Index (30%)</h4>
+        <p>Penalizes Sellers who accept bookings and cancel last-minute when assignments or exams loom.</p>
       </div>
-      <div class="explain-card">
-        <span class="num">03 — Response time</span>
-        <h4>How fast do they reply to a booking?</h4>
-        <p>Average minutes between a Buyer's request and Seller confirmation. Fast responders score higher on this factor.</p>
+      <div class="card card-pad">
+        <div class="icon-bubble">⚡</div>
+        <h4>Response Speed (20%)</h4>
+        <p>Measures how fast a Seller confirms a booking after a Buyer submits standard project details.</p>
       </div>
     </div>
   </div>
 </section>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-content">
-      <div>
-        <span class="mark">DORM DEAL</span>
-        <small>Prototype build · Covenant University pilot · All platform data simulated for testing</small>
-      </div>
-      
-      <div class="feedback-card">
-        <h4>Send Feedback to Founder</h4>
-        <p>Have suggestions or issues? Send a direct message to our founder.</p>
-        <form action="https://formsubmit.co/ovai.founder@gmail.com" method="POST" id="feedbackForm">
-          <input type="hidden" name="_subject" value="Dorm Deal User Feedback">
-          <input type="hidden" name="_captcha" value="false">
-          <div class="field">
-            <input type="email" name="email" id="feedbackEmail" placeholder="Your Email Address" required>
-          </div>
-          <div class="field">
-            <textarea name="message" id="feedbackMessage" rows="3" placeholder="Write your feedback or bug report here..." required></textarea>
-          </div>
-          <button type="submit" class="btn btn-gold btn-block btn-sm">Send Feedback</button>
-        </form>
-      </div>
+<footer class="footer">
+  <div class="wrap footer-content">
+    <div>
+      <span class="mark">DORM<em>DEAL</em></span>
+      <p>Built for Nigerian university ecosystems. Seamless, transparent, hostel-to-hostel trade.</p>
+    </div>
+    <div class="footer-links">
+      <a href="#directory">Directory</a>
+      <a href="#groupbuy">Group Buys</a>
+      <a href="#delivery">Logistics</a>
     </div>
   </div>
 </footer>
 
 <div class="modal-backdrop" id="authModal">
-  <div class="modal">
+  <div class="modal auth-modal-content">
     <button class="modal-close" data-close="authModal">✕</button>
-    <h3 id="authModalTitle">Access Dorm Deal</h3>
-    <p class="sub">Please identify whether you are joining as a Buyer or a Seller.</p>
-    
-    <div class="tabs">
-      <button class="tab-btn active" id="tabSignupBtn" data-authtab="signupTab">Sign Up</button>
-      <button class="tab-btn" id="tabLoginBtn" data-authtab="loginTab">Log In</button>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-authtab="signupTab">Create Account</button>
+      <button class="auth-tab" data-authtab="loginTab">Log In</button>
     </div>
 
     <div class="tab-panel active" id="signupTab">
+      <button class="btn btn-google btn-block" id="googleSignupBtn">
+        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-divider"><span>OR</span></div>
+
       <form id="signupForm">
         <div class="field">
-          <label>I am registering as a:</label>
+          <label>I want to join as:</label>
           <div class="role-selector">
             <label class="role-option">
-              <input type="radio" name="userRole" value="buyer" checked id="roleBuyerRadio">
+              <input type="radio" name="userRole" value="buyer" checked>
               <span>🎓 Buyer (Student)</span>
             </label>
             <label class="role-option">
-              <input type="radio" name="userRole" value="seller" id="roleSellerRadio">
+              <input type="radio" name="userRole" value="seller">
               <span>🏪 Seller (Vendor)</span>
             </label>
           </div>
         </div>
 
         <div class="field">
-          <label>Full Name</label>
+          <label>Full Name / Display Name</label>
           <input type="text" id="signupName" required placeholder="e.g. Ada Nwosu">
         </div>
 
         <div class="row-2">
           <div class="field">
             <label>Email Address</label>
-            <input type="email" id="signupEmail" required placeholder="user@domain.com">
+            <input type="email" id="signupEmail" required placeholder="ada@stu.cu.edu.ng">
           </div>
           <div class="field">
-            <label>University Campus</label>
+            <label>University</label>
             <select id="signupUni"></select>
           </div>
         </div>
 
-        <div class="field">
-          <label>Campus Location / Hostel</label>
-          <input type="text" id="signupLocation" required placeholder="e.g. Mary Hall, Room 204 or Block C Shop">
-        </div>
-
         <div class="row-2">
           <div class="field">
-            <label>Phone Number</label>
-            <input type="text" id="signupPhone" required placeholder="08012345678">
+            <label>Hostel / Location Sector</label>
+            <input type="text" id="signupLocation" required placeholder="e.g. Mary Hall, Room 204">
           </div>
           <div class="field">
-            <label>Profile Picture URL (Optional)</label>
-            <input type="text" id="signupPic" placeholder="https://example.com/photo.jpg">
+            <label>WhatsApp / Phone Number</label>
+            <input type="tel" id="signupPhone" required placeholder="08012345678">
           </div>
         </div>
 
-        <div id="sellerFields" style="display: none; border-top: 1px dashed var(--line); padding-top: 14px; margin-top: 10px;">
+        <div id="sellerFields" style="display:none;" class="seller-extra-box">
           <div class="field">
-            <label>Business Name</label>
-            <input type="text" id="signupBusinessName" placeholder="e.g. QuickFix Gadget Clinic">
+            <label>Business / Hustle Name</label>
+            <input type="text" id="signupBusiness" placeholder="e.g. QuickFix Repairs or Mary's Bakes">
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>Primary Service Category</label>
+              <select id="signupCategory">
+                <option value="Printing">🖨️ Printing</option>
+                <option value="Tech Repair">🔧 Tech Repair</option>
+                <option value="Laundry">🧺 Laundry</option>
+                <option value="Tailoring">🧵 Tailoring</option>
+                <option value="Catering">🍲 Catering</option>
+                <option value="Hairstyling">💇🏾‍♀️ Hairstyling</option>
+                <option value="Transport & Errands">🛵 Transport & Errands</option>
+                <option value="Makeup">💄 Makeup</option>
+                <option value="Snacks">🍿 Snacks</option>
+                <option value="Clothes">👕 Clothes</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Starting Price Label</label>
+              <input type="text" id="signupPrice" placeholder="e.g. ₦1,500/bag or ₦50/page">
+            </div>
           </div>
           <div class="field">
-            <label>Services Offered / Commodities Sold (Comma Separated)</label>
-            <textarea id="signupServices" rows="2" placeholder="e.g. Screen Repair, Battery Replacement, Phone Accessories"></textarea>
+            <label>Primary Service Offered</label>
+            <input type="text" id="signupService" placeholder="e.g. Wash & Fold or Screen Replacement">
           </div>
         </div>
 
         <div class="field">
-          <label>Password (Min 8 characters)</label>
+          <label>Password</label>
           <input type="password" id="signupPassword" required minlength="8" placeholder="••••••••">
         </div>
 
-        <button class="btn btn-gold btn-block" type="submit">Complete Sign Up</button>
+        <button class="btn btn-gold btn-block" type="submit">Create Account</button>
       </form>
     </div>
 
     <div class="tab-panel" id="loginTab">
-      <form id="loginForm">
-        <div class="field">
-          <label>Logging in as:</label>
-          <div class="role-selector">
-            <label class="role-option">
-              <input type="radio" name="loginRole" value="buyer" checked>
-              <span>🎓 Buyer</span>
-            </label>
-            <label class="role-option">
-              <input type="radio" name="loginRole" value="seller">
-              <span>🏪 Seller</span>
-            </label>
-          </div>
-        </div>
+      <button class="btn btn-google btn-block" id="googleLoginBtn">
+        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        Continue with Google
+      </button>
 
+      <div class="auth-divider"><span>OR</span></div>
+
+      <form id="loginForm">
         <div class="field">
           <label>Email Address</label>
           <input type="email" id="loginEmail" required placeholder="user@domain.com">
@@ -317,6 +324,13 @@
         <div class="field">
           <label>Password</label>
           <input type="password" id="loginPassword" required minlength="8" placeholder="••••••••">
+        </div>
+
+        <div class="field checkbox-field">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberMe" checked>
+            <span>Remember me on this browser</span>
+          </label>
         </div>
 
         <button class="btn btn-teal btn-block" type="submit">Log In</button>
@@ -329,8 +343,7 @@
   <div class="modal">
     <button class="modal-close" data-close="profileModal">✕</button>
     <h3>My Profile</h3>
-    <div class="profile-card-preview" id="profileModalView">
-      </div>
+    <div class="profile-card-preview" id="profileModalView"></div>
   </div>
 </div>
 
