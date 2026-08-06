@@ -19,8 +19,17 @@
         <span class="mark">DORM<em>DEAL</em></span>
       </div>
       <div class="nav-actions">
-        <span class="greet" id="greetText">Not signed in</span>
-        <button class="btn btn-ghost btn-sm" id="openAuthBtn">Sign up / Log in</button>
+        <div id="guestNavControls" class="auth-btn-group">
+          <button class="btn btn-ghost btn-sm" id="openLoginBtn">Log in</button>
+          <button class="btn btn-gold btn-sm" id="openSignupBtn">Sign Up</button>
+        </div>
+
+        <div id="userNavControls" class="auth-btn-group" style="display: none;">
+          <span class="greet" id="greetText">Welcome</span>
+          <button class="btn btn-teal btn-sm" id="openProfileBtn">My Profile 👤</button>
+          <button class="btn btn-ghost btn-sm" id="logoutBtn">Logout</button>
+        </div>
+
         <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle Navigation Menu" aria-expanded="false">
           <span></span>
           <span></span>
@@ -34,9 +43,9 @@
       <div class="drawer-header">
         <span class="mark">DORM<em>DEAL</em></span>
         <div class="user-info">
-          <span class="badge badge-featured" id="drawerUserBadge">👤 Not signed in</span>
+          <span class="badge badge-featured" id="drawerUserBadge">👤 Guest Mode</span>
           <h4 id="drawerUserName">Welcome, Guest</h4>
-          <p id="drawerUserRole">Sign in to book or list services</p>
+          <p id="drawerUserRole">Select Buyer or Seller to continue</p>
         </div>
       </div>
       <div class="drawer-body">
@@ -55,8 +64,11 @@
           </ul>
         </div>
       </div>
-      <div class="drawer-footer">
-        <button class="btn btn-gold btn-block" id="drawerAuthBtn">Sign up / Log in</button>
+      <div class="drawer-footer" id="drawerAuthFooter">
+        <div class="row-2">
+          <button class="btn btn-ghost btn-block" id="drawerLoginBtn">Log in</button>
+          <button class="btn btn-gold btn-block" id="drawerSignupBtn">Sign Up</button>
+        </div>
       </div>
     </aside>
 
@@ -64,10 +76,10 @@
       <div>
         <span class="hero-eyebrow">Campus commerce, out of the DMs</span>
         <h1>At Dorm Deal, <span class="accent">the deal is done.</span></h1>
-        <p class="tagline">One place for every student hustle near your hostel — printing, tech repair, tailoring, food, hair, and errands — with real prices, real delivery windows, and reliability scores vendors actually earn.</p>
+        <p class="tagline">One place for every hustle near your hostel — printing, tech repair, tailoring, food, hair, and errands — with transparent prices, batch delivery windows, and reliability scores earned by Sellers.</p>
      
         <div class="stats">
-          <div class="stat"><b id="statVendors">0</b><span>Active Vendors</span></div>
+          <div class="stat"><b id="statVendors">0</b><span>Active Sellers</span></div>
           <div class="stat"><b id="statUnis">12</b><span>Nigerian Campuses</span></div>
           <div class="stat"><b id="statPools">0</b><span>Group Buys Live</span></div>
         </div>
@@ -89,14 +101,26 @@
   </div>
 </header>
 
+<section class="block" id="myOrdersSection" style="display:none; background: #fff3e0;">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow" style="color:#d98a16;">Your Active Orders & Group Buys</span>
+        <h2>Manage or Withdraw Requests</h2>
+        <p class="sub">You have a 10-minute grace window to withdraw any order or group buy participation.</p>
+      </div>
+    </div>
+    <div id="activeOrdersList" class="grid"></div>
+  </div>
+</section>
+
 <section class="block" id="directory">
   <div class="wrap">
-    
     <div class="section-head">
       <div>
         <span class="eyebrow">Business Directory</span>
-        <h2>Vendors near you</h2>
-        <p class="sub">Featured cards are paid placements chosen by vendors — every listing still shows the same real distance, price and reliability data.</p>
+        <h2>Sellers near you</h2>
+        <p class="sub">Featured cards are verified campus listings — every seller profile displays clear campus location, prices, and reliability metrics.</p>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
         <span class="count-pill" id="resultsCount">0 results</span>
@@ -105,7 +129,6 @@
     </div>
 
     <div id="compareArea" style="display:none; margin-bottom:26px;"></div>
-
     <div class="grid" id="vendorGrid"></div>
   </div>
 </section>
@@ -116,10 +139,9 @@
       <div>
         <span class="eyebrow">AI-Pooled Group Buys</span>
         <h2>Join a pool, unlock a discount</h2>
-        <p class="sub">Dorm Deal groups students asking for similar items in the same time window, then offers the vendor a bulk-order tier once the pool fills.</p>
+        <p class="sub">Dorm Deal groups Buyers asking for similar items in the same time window to unlock wholesale rates from campus Sellers.</p>
       </div>
     </div>
-    
     <div class="pool-grid" id="poolGrid"></div>
   </div>
 </section>
@@ -130,7 +152,7 @@
       <div>
         <span class="eyebrow">Shared Delivery Pooling</span>
         <h2>One runner, many orders</h2>
-        <p class="sub">Orders headed to the same hall in the same slot are batched into a single runner trip instead of five separate ones.</p>
+        <p class="sub">Orders headed to the same hall in the same slot are batched into a single runner trip instead of multiple separate ones.</p>
       </div>
     </div>
     <div class="queue-wrap" id="queueWrap"></div>
@@ -149,17 +171,17 @@
       <div class="explain-card">
         <span class="num">01 — On-time rate</span>
         <h4>Did the order arrive when promised?</h4>
-        <p>Tracked automatically from booking confirmations vs. actual completion time. Weighted heaviest, since it's what students feel most.</p>
+        <p>Tracked automatically from booking confirmations vs. actual completion time. Weighted heaviest for student peace of mind.</p>
       </div>
       <div class="explain-card">
         <span class="num">02 — Cancellation rate</span>
-        <h4>How often does the vendor bail?</h4>
-        <p>Confirmed orders the vendor cancelled after acceptance. A high rate drags the score down even if reviews are glowing.</p>
+        <h4>How often does the Seller bail?</h4>
+        <p>Tracks orders cancelled by the Seller after acceptance. High cancellation rates significantly drop overall scores.</p>
       </div>
       <div class="explain-card">
         <span class="num">03 — Response time</span>
         <h4>How fast do they reply to a booking?</h4>
-        <p>Average minutes between a student's request and vendor confirmation. Fast responders score higher on this factor.</p>
+        <p>Average minutes between a Buyer's request and Seller confirmation. Fast responders score higher on this factor.</p>
       </div>
     </div>
   </div>
@@ -167,53 +189,155 @@
 
 <footer>
   <div class="wrap">
-    <span class="mark">DORM DEAL</span>
-    <small>Prototype build · Covenant University pilot · all data on this page is simulated for demo purposes</small>
+    <div class="footer-content">
+      <div>
+        <span class="mark">DORM DEAL</span>
+        <small>Prototype build · Covenant University pilot · All platform data simulated for testing</small>
+      </div>
+      
+      <div class="feedback-card">
+        <h4>Send Feedback to Founder</h4>
+        <p>Have suggestions or issues? Send a direct message to our founder.</p>
+        <form action="https://formsubmit.co/ovai.founder@gmail.com" method="POST" id="feedbackForm">
+          <input type="hidden" name="_subject" value="Dorm Deal User Feedback">
+          <input type="hidden" name="_captcha" value="false">
+          <div class="field">
+            <input type="email" name="email" id="feedbackEmail" placeholder="Your Email Address" required>
+          </div>
+          <div class="field">
+            <textarea name="message" id="feedbackMessage" rows="3" placeholder="Write your feedback or bug report here..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-gold btn-block btn-sm">Send Feedback</button>
+        </form>
+      </div>
+    </div>
   </div>
 </footer>
 
 <div class="modal-backdrop" id="authModal">
   <div class="modal">
     <button class="modal-close" data-close="authModal">✕</button>
-    <h3>Get on Dorm Deal</h3>
-    <p class="sub">Students and vendors sign up separately — vendors get a listing, students get access to bookings and group buys.</p>
+    <h3 id="authModalTitle">Access Dorm Deal</h3>
+    <p class="sub">Please identify whether you are joining as a Buyer or a Seller.</p>
+    
     <div class="tabs">
-      <button class="tab-btn active" data-tab="studentTab">I'm a student</button>
-      <button class="tab-btn" data-tab="vendorTab">I'm a vendor</button>
+      <button class="tab-btn active" id="tabSignupBtn" data-authtab="signupTab">Sign Up</button>
+      <button class="tab-btn" id="tabLoginBtn" data-authtab="loginTab">Log In</button>
     </div>
 
-    <div class="tab-panel active" id="studentTab">
-      <form id="studentForm">
-        <div class="field"><label>Full name</label><input type="text" required placeholder="e.g. Ada Nwosu"></div>
-        <div class="row-2">
-          <div class="field"><label>Student email or ID</label><input type="text" required placeholder="ada.nwosu@stu.cu.edu.ng"></div>
-          <div class="field"><label>University</label><select id="studentUniInput"></select></div>
-        </div>
-        <div class="field"><label>Password</label><input type="password" required placeholder="••••••••"></div>
-        <button class="btn btn-gold btn-block" type="submit">Create student account</button>
-      </form>
-    </div>
-
-    <div class="tab-panel" id="vendorTab">
-      <form id="vendorForm">
-        <div class="field"><label>Business name</label><input type="text" required placeholder="e.g. QuickFix Gadget Clinic"></div>
-        <div class="row-2">
-          <div class="field"><label>Contact email</label><input type="email" required placeholder="you@business.ng"></div>
-          <div class="field"><label>Primary category</label>
-            <select id="vendorCategoryInput"></select>
+    <div class="tab-panel active" id="signupTab">
+      <form id="signupForm">
+        <div class="field">
+          <label>I am registering as a:</label>
+          <div class="role-selector">
+            <label class="role-option">
+              <input type="radio" name="userRole" value="buyer" checked id="roleBuyerRadio">
+              <span>🎓 Buyer (Student)</span>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="userRole" value="seller" id="roleSellerRadio">
+              <span>🏪 Seller (Vendor)</span>
+            </label>
           </div>
         </div>
-        <div class="field"><label>Password</label><input type="password" required placeholder="••••••••"></div>
-        <button class="btn btn-teal btn-block" type="submit">Create vendor account</button>
+
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="signupName" required placeholder="e.g. Ada Nwosu">
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Email Address</label>
+            <input type="email" id="signupEmail" required placeholder="user@domain.com">
+          </div>
+          <div class="field">
+            <label>University Campus</label>
+            <select id="signupUni"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Campus Location / Hostel</label>
+          <input type="text" id="signupLocation" required placeholder="e.g. Mary Hall, Room 204 or Block C Shop">
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Phone Number</label>
+            <input type="text" id="signupPhone" required placeholder="08012345678">
+          </div>
+          <div class="field">
+            <label>Profile Picture URL (Optional)</label>
+            <input type="text" id="signupPic" placeholder="https://example.com/photo.jpg">
+          </div>
+        </div>
+
+        <div id="sellerFields" style="display: none; border-top: 1px dashed var(--line); padding-top: 14px; margin-top: 10px;">
+          <div class="field">
+            <label>Business Name</label>
+            <input type="text" id="signupBusinessName" placeholder="e.g. QuickFix Gadget Clinic">
+          </div>
+          <div class="field">
+            <label>Services Offered / Commodities Sold (Comma Separated)</label>
+            <textarea id="signupServices" rows="2" placeholder="e.g. Screen Repair, Battery Replacement, Phone Accessories"></textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Password (Min 8 characters)</label>
+          <input type="password" id="signupPassword" required minlength="8" placeholder="••••••••">
+        </div>
+
+        <button class="btn btn-gold btn-block" type="submit">Complete Sign Up</button>
       </form>
     </div>
+
+    <div class="tab-panel" id="loginTab">
+      <form id="loginForm">
+        <div class="field">
+          <label>Logging in as:</label>
+          <div class="role-selector">
+            <label class="role-option">
+              <input type="radio" name="loginRole" value="buyer" checked>
+              <span>🎓 Buyer</span>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="loginRole" value="seller">
+              <span>🏪 Seller</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="loginEmail" required placeholder="user@domain.com">
+        </div>
+
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="loginPassword" required minlength="8" placeholder="••••••••">
+        </div>
+
+        <button class="btn btn-teal btn-block" type="submit">Log In</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="profileModal">
+  <div class="modal">
+    <button class="modal-close" data-close="profileModal">✕</button>
+    <h3>My Profile</h3>
+    <div class="profile-card-preview" id="profileModalView">
+      </div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="vendorModal">
   <div class="modal" id="vendorModalContent">
     <button class="modal-close" data-close="vendorModal">✕</button>
-    </div>
+  </div>
 </div>
 
 <script src="dormdeal.js"></script>
