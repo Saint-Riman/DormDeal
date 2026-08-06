@@ -1,20 +1,6 @@
 /* =========================================================================
-   DORM DEAL — DATA MODEL
-   -------------------------------------------------------------------------
-   users          { id, name, role: 'student'|'vendor', university, email }
-   vendors        { id, name, category, university, description, icon,
-                    location, baseDistanceKm, phone, whatsapp, price,
-                    priceLabel, featured, discount, reliability:
-                      { onTimeRate, cancellationRate, avgResponseMins },
-                    reviews: [{ user, rating, text, date }] }
-   listings       (folded into vendor.price / vendor.priceLabel for this MVP —
-                    a vendor may extend this into a separate array of
-                    { vendorId, title, price } rows as the catalog grows)
-   groupOrders    { id, title, category, vendorName, unit, threshold,
-                    joined, discountPct, windowLabel }
-   deliveries     { hall, slot, orders:[{ vendor, item }], runnerAssigned }
-   orders         (simulated bookings) pushed at runtime into deliveries
-   ------------------------------------------------------------------------- */
+   DORM DEAL — DATA & CONTROLLER
+   ========================================================================= */
 
 const UNIVERSITIES = [
   "Covenant University",
@@ -47,6 +33,7 @@ let vendors = [
     description:"Same-day printing, binding & lamination right by the SST building.",
     location:"Behind SST Complex", baseDistanceKm:0.3, phone:"0803 111 2201", whatsapp:"2348031112201",
     price:50, priceLabel:"₦50/page", featured:true, discount:"10% off for CU IDs",
+    servicesOffered: ["A4/A3 Printing", "Spiral Binding", "Hardcover Project Binding", "Lamination"],
     reliability:{onTimeRate:0.96, cancellationRate:0.02, avgResponseMins:4},
     reviews:[{user:"Tomiwa A.", rating:5, text:"Fastest print spot on campus, never late for a submission.", date:"2 weeks ago"},
              {user:"Chiamaka O.", rating:4, text:"Good quality binding, slightly pricey for colour prints.", date:"1 month ago"}] },
@@ -55,6 +42,7 @@ let vendors = [
     description:"Screen, battery & charging port repairs for phones and laptops.",
     location:"Student Hostel Mall", baseDistanceKm:0.6, phone:"0805 220 3391", whatsapp:"2348052203391",
     price:4500, priceLabel:"from ₦4,500", featured:true, discount:"Free diagnosis for students",
+    servicesOffered: ["Screen Replacement", "Battery Fix", "Port Soldering", "OS Flashing"],
     reliability:{onTimeRate:0.88, cancellationRate:0.06, avgResponseMins:12},
     reviews:[{user:"David E.", rating:5, text:"Fixed my charging port in 40 minutes, honestly impressive.", date:"3 days ago"}] },
 
@@ -62,86 +50,17 @@ let vendors = [
     description:"Wash, dry & fold with hostel pickup and drop-off included.",
     location:"Behind Peniel Hall", baseDistanceKm:0.2, phone:"0701 998 4432", whatsapp:"2347019984432",
     price:1500, priceLabel:"₦1,500/bag", featured:false, discount:"",
+    servicesOffered: ["Wash & Fold", "Ironing", "Duvet Cleaning"],
     reliability:{onTimeRate:0.79, cancellationRate:0.10, avgResponseMins:22},
     reviews:[{user:"Grace I.", rating:3, text:"Clothes came back clean but a day later than promised.", date:"1 week ago"}] },
 
-  { id:4, name:"StitchCraft Tailors", category:"Tailoring", university:"Covenant University",
-    description:"Custom fits, alterations and quick repairs — 24hr turnaround.",
-    location:"CU Shopping Complex", baseDistanceKm:0.5, phone:"0813 662 7710", whatsapp:"2348136627710",
-    price:3000, priceLabel:"from ₦3,000", featured:false, discount:"",
-    reliability:{onTimeRate:0.91, cancellationRate:0.03, avgResponseMins:9},
-    reviews:[{user:"Faith U.", rating:5, text:"Altered my dress perfectly before Friday service, so grateful.", date:"5 days ago"}] },
-
-  { id:5, name:"Mama Nkechi's Kitchen", category:"Catering", university:"Covenant University",
+  { id:4, name:"Mama Nkechi's Kitchen", category:"Catering", university:"Covenant University",
     description:"Home-style Nigerian meals, bulk trays for fellowships & events.",
     location:"Off-campus, Canaan Land Rd", baseDistanceKm:1.1, phone:"0906 554 2201", whatsapp:"2349065542201",
     price:1200, priceLabel:"₦1,200/plate", featured:true, discount:"Bulk tray discount at 20 plates",
+    servicesOffered: ["Jollof Rice Trays", "Fried Rice Trays", "Egusi & Pounded Yam", "Plantain Extra"],
     reliability:{onTimeRate:0.93, cancellationRate:0.01, avgResponseMins:6},
-    reviews:[{user:"Emeka N.", rating:5, text:"The jollof rice hits different, and delivery is always on time.", date:"2 days ago"},
-             {user:"Blessing K.", rating:5, text:"Ordered for a birthday, portions were generous.", date:"3 weeks ago"}] },
-
-  { id:6, name:"GlowBraids Studio", category:"Hairstyling", university:"Covenant University",
-    description:"Braids, weave-ons & natural hair care in a small hostel-friendly studio.",
-    location:"Zion Hall Annex", baseDistanceKm:0.4, phone:"0902 774 1180", whatsapp:"2349027741180",
-    price:5000, priceLabel:"from ₦5,000", featured:false, discount:"",
-    reliability:{onTimeRate:0.84, cancellationRate:0.08, avgResponseMins:18},
-    reviews:[{user:"Ifeoma C.", rating:4, text:"Lovely braids, took a bit longer than the quoted time.", date:"1 week ago"}] },
-
-  { id:7, name:"CampusDash Errands", category:"Transport & Errands", university:"Covenant University",
-    description:"Bike runners for pickups, drop-offs and quick campus errands.",
-    location:"Main Gate Dispatch Point", baseDistanceKm:0.1, phone:"0810 333 9021", whatsapp:"2348103339021",
-    price:500, priceLabel:"from ₦500/trip", featured:true, discount:"Free 1st errand for new users",
-    reliability:{onTimeRate:0.97, cancellationRate:0.01, avgResponseMins:3},
-    reviews:[{user:"Samuel T.", rating:5, text:"Runner arrived in under 5 minutes, super reliable.", date:"yesterday"}] },
-
-  { id:8, name:"BeatFace Makeup Bar", category:"Makeup", university:"Covenant University",
-    description:"Everyday glam and event makeup, house calls available.",
-    location:"Lydia Hall Room 214", baseDistanceKm:0.35, phone:"0704 221 6650", whatsapp:"2347042216650",
-    price:6000, priceLabel:"from ₦6,000", featured:false, discount:"",
-    reliability:{onTimeRate:0.75, cancellationRate:0.13, avgResponseMins:26},
-    reviews:[{user:"Precious A.", rating:3, text:"Great makeup but had to reschedule once.", date:"2 weeks ago"}] },
-
-  { id:9, name:"SnackStop 24", category:"Snacks", university:"Covenant University",
-    description:"Provisions, instant noodles, drinks & midnight snack runs.",
-    location:"Joseph Hall Ground Floor", baseDistanceKm:0.15, phone:"0817 990 3312", whatsapp:"2348179903312",
-    price:300, priceLabel:"from ₦300", featured:false, discount:"Buy 5 get 1 free on drinks",
-    reliability:{onTimeRate:0.9, cancellationRate:0.02, avgResponseMins:5},
-    reviews:[{user:"Victor O.", rating:4, text:"Always stocked, good for late night cravings.", date:"4 days ago"}] },
-
-  { id:10, name:"ThreadLine Fashion", category:"Clothes", university:"Covenant University",
-    description:"Affordable everyday wear, thrifted pieces and made-to-order fits.",
-    location:"CU Shopping Complex Stall 6", baseDistanceKm:0.5, phone:"0909 112 8834", whatsapp:"2349091128834",
-    price:2500, priceLabel:"from ₦2,500", featured:false, discount:"",
-    reliability:{onTimeRate:0.86, cancellationRate:0.05, avgResponseMins:14},
-    reviews:[{user:"Ruth D.", rating:4, text:"Nice quality tops for the price, restocks fast.", date:"6 days ago"}] },
-
-  { id:11, name:"UNILAG PrintSpot", category:"Printing", university:"University of Lagos (UNILAG)",
-    description:"Fast printing and project binding near the faculty of science.",
-    location:"Behind Faculty of Science", baseDistanceKm:0.4, phone:"0802 556 7712", whatsapp:"2348025567712",
-    price:60, priceLabel:"₦60/page", featured:false, discount:"",
-    reliability:{onTimeRate:0.89, cancellationRate:0.04, avgResponseMins:10},
-    reviews:[{user:"Kunle F.", rating:4, text:"Reliable during exam season rush.", date:"2 weeks ago"}] },
-
-  { id:12, name:"Yaba Gadget Fix", category:"Tech Repair", university:"University of Lagos (UNILAG)",
-    description:"Laptop and phone repairs with same-day parts sourcing.",
-    location:"Akoka Junction", baseDistanceKm:1.4, phone:"0705 887 2210", whatsapp:"2347058872210",
-    price:5000, priceLabel:"from ₦5,000", featured:true, discount:"Student discount 5%",
-    reliability:{onTimeRate:0.81, cancellationRate:0.09, avgResponseMins:19},
-    reviews:[{user:"Amaka L.", rating:4, text:"Sourced a rare part for my laptop, took two days.", date:"3 weeks ago"}] },
-
-  { id:13, name:"IbadanBraids & Co", category:"Hairstyling", university:"University of Ibadan (UI)",
-    description:"Popular hostel-based braiding studio with weekend slots.",
-    location:"Queens Hall Junction", baseDistanceKm:0.3, phone:"0813 004 5521", whatsapp:"2348130045521",
-    price:4500, priceLabel:"from ₦4,500", featured:false, discount:"",
-    reliability:{onTimeRate:0.87, cancellationRate:0.05, avgResponseMins:15},
-    reviews:[{user:"Deborah S.", rating:5, text:"Booked a weekend slot easily, great result.", date:"1 week ago"}] },
-
-  { id:14, name:"OAU CampusRide", category:"Transport & Errands", university:"Obafemi Awolowo University (OAU)",
-    description:"Okada and errand runners covering the whole OAU campus loop.",
-    location:"Freedom Square", baseDistanceKm:0.2, phone:"0908 776 4410", whatsapp:"2349087764410",
-    price:400, priceLabel:"from ₦400/trip", featured:false, discount:"",
-    reliability:{onTimeRate:0.94, cancellationRate:0.02, avgResponseMins:6},
-    reviews:[{user:"Bayo A.", rating:5, text:"Fast and cheap, use them almost every week.", date:"5 days ago"}] }
+    reviews:[{user:"Emeka N.", rating:5, text:"The jollof rice hits different, and delivery is always on time.", date:"2 days ago"}] }
 ];
 
 let groupOrders = [
@@ -150,36 +69,32 @@ let groupOrders = [
   { id:2, title:"Jollof Rice Trays for Fellowship", category:"Catering", vendorName:"Mama Nkechi's Kitchen",
     unit:"trays", threshold:10, joined:10, discountPct:15, windowLabel:"Friday 5–7pm, hall delivery" },
   { id:3, title:"A4 Ream Group Order", category:"Printing", vendorName:"CU PrintHub",
-    unit:"reams", threshold:20, joined:6, discountPct:12, windowLabel:"Before Monday's exams" },
-  { id:4, title:"Braids Weekend Batch", category:"Hairstyling", vendorName:"GlowBraids Studio",
-    unit:"slots", threshold:8, joined:3, discountPct:10, windowLabel:"Saturday morning slots" }
+    unit:"reams", threshold:20, joined:6, discountPct:12, windowLabel:"Before Monday's exams" }
 ];
 
 let deliveries = [
   { hall:"Peniel Hall", slot:"Today, 4:00–5:00pm",
-    orders:[{vendor:"CU PrintHub", item:"Project binding x2"}, {vendor:"SnackStop 24", item:"Provisions restock"}, {vendor:"Sparkle Laundromat", item:"Laundry bag pickup"}] },
+    orders:[{vendor:"CU PrintHub", item:"Project binding x2"}, {vendor:"Sparkle Laundromat", item:"Laundry bag pickup"}] },
   { hall:"Zion Hall", slot:"Today, 6:00–7:00pm",
-    orders:[{vendor:"QuickFix Gadget Clinic", item:"Screen protector"}, {vendor:"GlowBraids Studio", item:"Braid appointment reminder kit"}] },
-  { hall:"Lydia Hall", slot:"Tomorrow, 12:00–1:00pm",
-    orders:[{vendor:"Mama Nkechi's Kitchen", item:"Lunch tray"}] }
+    orders:[{vendor:"QuickFix Gadget Clinic", item:"Screen protector"}] }
 ];
 
-let currentUser = null; // { name, role, university }
+// USER MANAGEMENT & AUTH STATE
+let registeredUsers = []; 
+let currentUser = null; // { name, email, role: 'buyer'|'seller', university, location, phone, picture, businessName, servicesOffered }
+let userOrders = []; // Track orders & pool entries with withdrawal timestamps [{ id, type: 'order'|'pool', title, vendor, timestamp, poolId }]
+
 let activeUni = "Covenant University";
 let activeCategory = "All";
 let compareOpen = false;
 let activeVendorId = null;
 
-/* ---------------------------------------------------------------------
-   RELIABILITY SCORE
-   Weighted composite (0–100), extendable: adjust WEIGHTS to retune, or
-   add new factors to the `factors` object without touching callers.
---------------------------------------------------------------------- */
+/* ------------------ RELIABILITY CALCULATIONS ------------------ */
 const RELIABILITY_WEIGHTS = { onTime:0.5, cancellation:0.3, response:0.2 };
 function reliabilityScore(r){
   const onTimeScore = r.onTimeRate * 100;
   const cancelScore = (1 - r.cancellationRate) * 100;
-  const responseScore = Math.max(0, 100 - r.avgResponseMins * 2.5); // faster = higher, floors at 0
+  const responseScore = Math.max(0, 100 - r.avgResponseMins * 2.5);
   const score = onTimeScore*RELIABILITY_WEIGHTS.onTime + cancelScore*RELIABILITY_WEIGHTS.cancellation + responseScore*RELIABILITY_WEIGHTS.response;
   return Math.round(Math.max(0, Math.min(100, score)));
 }
@@ -198,7 +113,13 @@ function starString(n){
   return "★★★★★".slice(0,full) + "☆☆☆☆☆".slice(0, 5-full);
 }
 
-/* =========================== INIT / RENDER =========================== */
+/* ------------------ EMAIL VALIDATION HELPER ------------------ */
+function isValidEmail(email) {
+  const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return re.test(String(email).toLowerCase());
+}
+
+/* ------------------ INITIALIZATION ------------------ */
 function populateSelect(select, options, withAll){
   select.innerHTML = "";
   if(withAll){
@@ -214,10 +135,7 @@ function populateSelect(select, options, withAll){
 function init(){
   populateSelect(document.getElementById("uniSelect"), UNIVERSITIES, false);
   document.getElementById("uniSelect").value = activeUni;
-  populateSelect(document.getElementById("studentUniInput"), UNIVERSITIES, false);
-
-  const vendorCatSelect = document.getElementById("vendorCategoryInput");
-  vendorCatSelect.innerHTML = CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join("");
+  populateSelect(document.getElementById("signupUni"), UNIVERSITIES, false);
 
   renderCategoryChips();
   renderTicker();
@@ -227,52 +145,209 @@ function init(){
   updateStats();
   initHamburgerMenu();
 
+  // Event Listeners
   document.getElementById("uniSelect").addEventListener("change", e=>{
     activeUni = e.target.value; renderVendors(); if(compareOpen) renderCompare();
   });
   document.getElementById("scanLocationBtn").addEventListener("click", recalcDistances);
   document.getElementById("compareToggle").addEventListener("click", toggleCompare);
-  document.getElementById("openAuthBtn").addEventListener("click", ()=>openModal("authModal"));
 
+  // Auth Modal Triggers
+  document.getElementById("openLoginBtn").addEventListener("click", ()=>openAuthModal("login"));
+  document.getElementById("openSignupBtn").addEventListener("click", ()=>openAuthModal("signup"));
+  document.getElementById("drawerLoginBtn").addEventListener("click", ()=>openAuthModal("login"));
+  document.getElementById("drawerSignupBtn").addEventListener("click", ()=>openAuthModal("signup"));
+  document.getElementById("openProfileBtn").addEventListener("click", openProfileModal);
+  document.getElementById("logoutBtn").addEventListener("click", handleLogout);
+
+  // Modal Close Handlers
   document.querySelectorAll(".modal-close").forEach(btn=>{
     btn.addEventListener("click", ()=>closeModal(btn.dataset.close));
   });
   document.querySelectorAll(".modal-backdrop").forEach(bd=>{
     bd.addEventListener("click", e=>{ if(e.target===bd) closeModal(bd.id); });
   });
-  document.querySelectorAll(".tab-btn").forEach(btn=>{
+
+  // Auth Tabs Toggle
+  document.querySelectorAll("[data-authtab]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
-      document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+      document.querySelectorAll("[data-authtab]").forEach(b=>b.classList.remove("active"));
+      document.querySelectorAll("#authModal .tab-panel").forEach(p=>p.classList.remove("active"));
       btn.classList.add("active");
-      document.getElementById(btn.dataset.tab).classList.add("active");
+      document.getElementById(btn.dataset.authtab).classList.add("active");
     });
   });
 
-  document.getElementById("studentForm").addEventListener("submit", e=>{
-    e.preventDefault();
-    const inputs = e.target.querySelectorAll("input");
-    currentUser = { name: inputs[0].value || "Student", role:"student", university: document.getElementById("studentUniInput").value };
-    finishAuth();
+  // Signup Role Toggle (Buyer vs Seller)
+  document.querySelectorAll("input[name='userRole']").forEach(radio=>{
+    radio.addEventListener("change", (e)=>{
+      const sellerFields = document.getElementById("sellerFields");
+      if(e.target.value === "seller"){
+        sellerFields.style.display = "block";
+      } else {
+        sellerFields.style.display = "none";
+      }
+    });
   });
-  document.getElementById("vendorForm").addEventListener("submit", e=>{
-    e.preventDefault();
-    const inputs = e.target.querySelectorAll("input");
-    currentUser = { name: inputs[0].value || "Vendor", role:"vendor", university: activeUni };
-    finishAuth();
-  });
+
+  // Auth Form Submissions
+  document.getElementById("signupForm").addEventListener("submit", handleSignup);
+  document.getElementById("loginForm").addEventListener("submit", handleLogin);
+
+  // Start Withdrawal Window Clock Tick
+  setInterval(renderActiveOrders, 10000); // refresh active orders view every 10s for live timers
 }
 
-function finishAuth(){
-  const label = currentUser.role === "student" ? "Student" : "Vendor";
-  document.getElementById("greetText").textContent = `${label} · ${currentUser.name}`;
-  document.getElementById("openAuthBtn").textContent = "Account ✓";
-  closeModal("authModal");
+/* ------------------ AUTHENTICATION & PROFILE LOGIC ------------------ */
+function openAuthModal(mode){
+  openModal("authModal");
+  if(mode === "login"){
+    document.getElementById("tabLoginBtn").click();
+  } else {
+    document.getElementById("tabSignupBtn").click();
+  }
+}
+
+function handleSignup(e){
+  e.preventDefault();
+  const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value;
+  const name = document.getElementById("signupName").value.trim();
+  const role = document.querySelector("input[name='userRole']:checked").value;
+  const university = document.getElementById("signupUni").value;
+  const location = document.getElementById("signupLocation").value.trim();
+  const phone = document.getElementById("signupPhone").value.trim();
+  const picture = document.getElementById("signupPic").value.trim() || "https://via.placeholder.com/150";
+
+  if(!isValidEmail(email)){
+    alert("Please enter a valid email address.");
+    return;
+  }
+  if(password.length < 8){
+    alert("Password must be at least 8 characters long.");
+    return;
+  }
+
+  const existing = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === role);
+  if(existing){
+    alert(`An account already exists as a ${role} with this email.`);
+    return;
+  }
+
+  let servicesList = [];
+  let businessName = "";
+
+  if(role === "seller"){
+    businessName = document.getElementById("signupBusinessName").value.trim() || name + "'s Business";
+    const rawServices = document.getElementById("signupServices").value;
+    servicesList = rawServices.split(",").map(s=>s.trim()).filter(s=>s.length > 0);
+  }
+
+  const newUser = {
+    name, email, password, role, university, location, phone, picture,
+    businessName, servicesOffered: servicesList
+  };
+
+  registeredUsers.push(newUser);
+  currentUser = newUser;
+
+  // If user registered as seller, add them live to the vendor directory!
+  if(role === "seller"){
+    vendors.unshift({
+      id: Date.now(),
+      name: businessName,
+      category: servicesList.length ? "Custom" : "Services",
+      university: university,
+      description: `Services offered: ${servicesList.join(", ")}`,
+      location: location,
+      baseDistanceKm: 0.4,
+      phone: phone,
+      whatsapp: phone,
+      price: 1000,
+      priceLabel: "Contact for price",
+      featured: false,
+      discount: "",
+      servicesOffered: servicesList,
+      reliability: { onTimeRate:1.0, cancellationRate:0.0, avgResponseMins:5 },
+      reviews: []
+    });
+    renderVendors();
+  }
+
+  finishAuth();
+}
+
+function handleLogin(e){
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const role = document.querySelector("input[name='loginRole']:checked").value;
+
+  if(!isValidEmail(email)){
+    alert("Please enter a valid email address.");
+    return;
+  }
+
+  const user = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.role === role && u.password === password);
+  if(!user){
+    alert("Invalid credentials or role selection. Please verify email, password, and account type.");
+    return;
+  }
+
+  currentUser = user;
+  finishAuth();
+}
+
+function handleLogout(){
+  currentUser = null;
+  document.getElementById("guestNavControls").style.display = "flex";
+  document.getElementById("userNavControls").style.display = "none";
+  document.getElementById("myOrdersSection").style.display = "none";
   updateHamburgerUserMenu();
 }
 
-function openModal(id){ document.getElementById(id).classList.add("open"); }
-function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+function finishAuth(){
+  document.getElementById("guestNavControls").style.display = "none";
+  document.getElementById("userNavControls").style.display = "flex";
+  document.getElementById("greetText").textContent = `${currentUser.role === 'buyer' ? '🎓 Buyer' : '🏪 Seller'} · ${currentUser.name}`;
+  closeModal("authModal");
+  updateHamburgerUserMenu();
+  renderActiveOrders();
+}
+
+function openProfileModal(){
+  if(!currentUser) return;
+  const view = document.getElementById("profileModalView");
+  
+  const isSeller = currentUser.role === "seller";
+  
+  view.innerHTML = `
+    <div style="text-align:center; margin-bottom:20px;">
+      <div class="avatar" style="width:80px; height:80px; margin:0 auto 12px; border-radius:50%;">
+        <img src="${currentUser.picture}" alt="Profile Picture" onerror="this.src='https://via.placeholder.com/80?text=User'">
+      </div>
+      <h4>${currentUser.name}</h4>
+      <span class="badge badge-featured">${isSeller ? '🏪 Seller Account' : '🎓 Buyer Account'}</span>
+    </div>
+
+    <div class="field"><label>Email Address</label><input type="text" value="${currentUser.email}" readonly></div>
+    <div class="field"><label>Phone Number / WhatsApp</label><input type="text" value="${currentUser.phone}" readonly></div>
+    <div class="field"><label>Campus / Location</label><input type="text" value="${currentUser.university} — ${currentUser.location}" readonly></div>
+
+    ${isSeller ? `
+      <div style="border-top:1px dashed var(--line); padding-top:14px; margin-top:14px;">
+        <div class="field"><label>Business Name</label><input type="text" value="${currentUser.businessName}" readonly></div>
+        <div class="field"><label>Services & Commodities Offered</label>
+          <div class="tag-list">
+            ${currentUser.servicesOffered.map(s=>`<span class="tag">${s}</span>`).join("") || "<span>No custom services listed</span>"}
+          </div>
+        </div>
+      </div>
+    ` : ''}
+  `;
+
+  openModal("profileModal");
+}
 
 /* ------------------------ HAMBURGER MENU ------------------------ */
 function initHamburgerMenu(){
@@ -302,22 +377,6 @@ function initHamburgerMenu(){
   });
 
   overlay.addEventListener("click", closeDrawer);
-
-  drawer.querySelectorAll("a, button").forEach(elem => {
-    elem.addEventListener("click", (e)=>{
-      const modalTarget = elem.dataset.modalTarget;
-      if(modalTarget){
-        e.preventDefault();
-        openModal(modalTarget);
-      }
-      closeDrawer();
-    });
-  });
-
-  document.getElementById("drawerAuthBtn").addEventListener("click", ()=>{
-    openModal("authModal");
-  });
-
   updateHamburgerUserMenu();
 }
 
@@ -325,43 +384,106 @@ function updateHamburgerUserMenu(){
   const badge = document.getElementById("drawerUserBadge");
   const nameLabel = document.getElementById("drawerUserName");
   const roleLabel = document.getElementById("drawerUserRole");
-  const authBtn = document.getElementById("drawerAuthBtn");
-  const dynamicLinks = document.getElementById("drawerDynamicLinks");
+  const footer = document.getElementById("drawerAuthFooter");
 
   if(!currentUser){
-    badge.textContent = "👤 Not signed in";
+    badge.textContent = "👤 Guest Mode";
     nameLabel.textContent = "Welcome, Guest";
-    roleLabel.textContent = "Sign in to book or list services";
-    authBtn.textContent = "Sign up / Log in";
-    dynamicLinks.innerHTML = `
-      <li><a href="#directory">🔍 Browse Directory</a></li>
-      <li><a href="#groupbuy">🔥 Group Buys</a></li>
-      <li><a href="#delivery">🛵 Delivery Batches</a></li>
-    `;
+    roleLabel.textContent = "Please sign up or log in";
+    footer.innerHTML = `
+      <div class="row-2">
+        <button class="btn btn-ghost btn-block" onclick="openAuthModal('login')">Log in</button>
+        <button class="btn btn-gold btn-block" onclick="openAuthModal('signup')">Sign Up</button>
+      </div>`;
     return;
   }
 
-  const isStudent = currentUser.role === "student";
-  badge.textContent = isStudent ? "🎓 Student Account" : "🏪 Vendor Account";
+  const isBuyer = currentUser.role === "buyer";
+  badge.textContent = isBuyer ? "🎓 Buyer" : "🏪 Seller";
   nameLabel.textContent = currentUser.name;
   roleLabel.textContent = currentUser.university;
-  authBtn.textContent = "Switch / Manage Account";
+  
+  footer.innerHTML = `
+    <button class="btn btn-teal btn-block" onclick="openProfileModal()">View My Profile 👤</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="handleLogout()">Logout</button>
+  `;
+}
 
-  if(isStudent){
-    dynamicLinks.innerHTML = `
-      <li><a href="#directory">🔍 Directory & Quick Bookings</a></li>
-      <li><a href="#groupbuy">🔥 Join Active Group Buys</a></li>
-      <li><a href="#delivery">🛵 My Hostel Delivery Batches</a></li>
-      <li><a href="#" data-modal-target="authModal">⚙️ Student Settings</a></li>
-    `;
-  } else {
-    dynamicLinks.innerHTML = `
-      <li><a href="#directory">🏪 My Vendor Profile & Catalog</a></li>
-      <li><a href="#groupbuy">📦 Create / Manage Bulk Deals</a></li>
-      <li><a href="#delivery">🛵 Active Hostel Deliveries</a></li>
-      <li><a href="#how">📊 View My Reliability Score</a></li>
-    `;
+/* ------------------ WITHDRAWAL & ORDER MANAGEMENT ------------------ */
+function addOrderWithWithdrawal(item){
+  const orderObj = {
+    id: Date.now(),
+    timestamp: Date.now(),
+    ...item
+  };
+  userOrders.unshift(orderObj);
+  renderActiveOrders();
+}
+
+function withdrawOrder(id){
+  const idx = userOrders.findIndex(o => o.id === id);
+  if(idx === -1) return;
+
+  const order = userOrders[idx];
+  const elapsedMins = (Date.now() - order.timestamp) / (1000 * 60);
+
+  if(elapsedMins > 10){
+    alert("The 10-minute withdrawal window has expired for this request.");
+    return;
   }
+
+  // If order was a pool join, reduce pool count
+  if(order.type === 'pool' && order.poolId){
+    const pool = groupOrders.find(g => g.id === order.poolId);
+    if(pool && pool.joined > 0){
+      pool.joined -= 1;
+      renderPools();
+    }
+  }
+
+  userOrders.splice(idx, 1);
+  alert("Your order/request has been withdrawn successfully.");
+  renderActiveOrders();
+  renderTicker();
+}
+
+function renderActiveOrders(){
+  const sec = document.getElementById("myOrdersSection");
+  const list = document.getElementById("activeOrdersList");
+
+  if(!currentUser || userOrders.length === 0){
+    sec.style.display = "none";
+    return;
+  }
+
+  sec.style.display = "block";
+  const now = Date.now();
+
+  list.innerHTML = userOrders.map(o => {
+    const elapsedSecs = Math.floor((now - o.timestamp) / 1000);
+    const windowSecs = 10 * 60;
+    const remainingSecs = Math.max(0, windowSecs - elapsedSecs);
+    const canWithdraw = remainingSecs > 0;
+
+    const mins = Math.floor(remainingSecs / 60);
+    const secs = remainingSecs % 60;
+
+    return `
+      <div class="card" style="border:1px solid var(--gold);">
+        <div class="card-top">
+          <h4>${o.title}</h4>
+          <span class="badge ${canWithdraw ? 'badge-featured' : ''}">${canWithdraw ? 'Window Active' : 'Confirmed'}</span>
+        </div>
+        <p class="desc">Seller/Vendor: ${o.vendor}</p>
+        <div class="meta-row">
+          <span>${canWithdraw ? `⏳ ${mins}m ${secs}s left to withdraw` : '🔒 Window closed'}</span>
+        </div>
+        ${canWithdraw ? `
+          <button class="btn btn-coral btn-sm btn-block" onclick="withdrawOrder(${o.id})">Withdraw Order</button>
+        ` : ''}
+      </div>
+    `;
+  }).join("");
 }
 
 /* ---------------------------- TICKER ---------------------------- */
@@ -419,7 +541,7 @@ function renderVendors(){
   const grid = document.getElementById("vendorGrid");
 
   if(!list.length){
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No vendors yet for this campus + category combo. Try "All" categories, or check back as Dorm Deal expands.</div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No campus sellers match this category filter. Try selecting "All" categories.</div>`;
     return;
   }
 
@@ -482,13 +604,13 @@ function renderCompare(){
   document.getElementById("compareArea").innerHTML = `
     <div class="compare-wrap">
       <table>
-        <thead><tr><th>Vendor</th><th>Category</th><th>Price</th><th>Reliability</th><th>Distance</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="5" style="text-align:center; padding:20px;">No vendors to compare in this filter.</td></tr>`}</tbody>
+        <thead><tr><th>Seller</th><th>Category</th><th>Price</th><th>Reliability</th><th>Distance</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="5" style="text-align:center; padding:20px;">No sellers to compare.</td></tr>`}</tbody>
       </table>
     </div>`;
 }
 
-/* --------------------------- VENDOR PROFILE MODAL --------------------------- */
+/* --------------------------- VENDOR MODAL & BOOKING --------------------------- */
 function openVendorProfile(id){
   activeVendorId = id;
   renderVendorModal();
@@ -500,14 +622,6 @@ function renderVendorModal(){
   if(!v) return;
   const score = reliabilityScore(v.reliability);
   const rel = reliabilityLabel(score);
-  const rating = avgRating(v);
-
-  const reviewsHtml = v.reviews.map(r=>`
-    <div class="review">
-      <div class="review-head"><span>${r.user}</span><span class="stars">${starString(r.rating)}</span></div>
-      <p>${r.text}</p>
-      <div style="font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); margin-top:4px;">${r.date}</div>
-    </div>`).join("") || `<p style="color:var(--ink-soft); font-size:13.5px;">No reviews yet — be the first to book and review.</p>`;
 
   const timeSlots = ["9:00 AM","11:00 AM","1:00 PM","3:00 PM","5:00 PM","7:00 PM"];
 
@@ -522,23 +636,26 @@ function renderVendorModal(){
     </div>
     <p style="font-size:14px; color:var(--ink-soft); margin-top:10px;">${v.description}</p>
     <div class="contact-row">
-      <span class="contact-pill">📍 ${v.location} — ${distanceOf(v).toFixed(1)} mi</span>
+      <span class="contact-pill">📍 ${v.location}</span>
       <span class="contact-pill">☎ ${v.phone}</span>
-      <span class="contact-pill">💬 WhatsApp: ${v.whatsapp}</span>
       <span class="contact-pill">💰 ${v.priceLabel}</span>
     </div>
+
+    ${v.servicesOffered && v.servicesOffered.length ? `
+      <div style="margin-top:10px;">
+        <label style="font-size:11px; font-weight:700; text-transform:uppercase;">Services Offered:</label>
+        <div class="tag-list">
+          ${v.servicesOffered.map(s=>`<span class="tag">${s}</span>`).join("")}
+        </div>
+      </div>
+    ` : ''}
 
     <div class="score-wrap">
       <div class="score-ring" style="background:${rel.color};">${score}</div>
       <div class="score-detail">
         <b style="font-size:14px;">${rel.label} reliability</b><br>
-        On-time ${Math.round(v.reliability.onTimeRate*100)}% · Cancels ${Math.round(v.reliability.cancellationRate*100)}% · Replies in ~${v.reliability.avgResponseMins} min
+        On-time ${Math.round(v.reliability.onTimeRate*100)}% · Cancels ${Math.round(v.reliability.cancellationRate*100)}%
       </div>
-    </div>
-
-    <div class="tabs">
-      <button class="tab-btn active" data-vtab="bookPanel">Book Now</button>
-      <button class="tab-btn" data-vtab="reviewPanel">Reviews (${v.reviews.length})</button>
     </div>
 
     <div class="tab-panel active" id="bookPanel">
@@ -549,69 +666,44 @@ function renderVendorModal(){
             <select id="bookSlot">${timeSlots.map(t=>`<option>${t}</option>`).join("")}</select>
           </div>
         </div>
-        <div class="field"><label>Delivery hall (optional)</label>
-          <input type="text" id="bookHall" placeholder="e.g. Peniel Hall">
+        <div class="field"><label>Delivery hostel/location</label>
+          <input type="text" id="bookHall" placeholder="e.g. Peniel Hall Room 102" required>
         </div>
-        <button type="submit" class="btn btn-gold btn-block">Book Now — instant confirmation</button>
+        <button type="submit" class="btn btn-gold btn-block">Place Order — Instant Confirmation</button>
       </form>
       <div class="confirm-box" id="bookConfirm"></div>
-    </div>
-
-    <div class="tab-panel" id="reviewPanel">
-      <div style="max-height:220px; overflow-y:auto; margin-bottom:16px;">${reviewsHtml}</div>
-      <form id="reviewForm">
-        <div class="row-2">
-          <div class="field"><label>Your name</label><input type="text" id="reviewName" value="${currentUser ? currentUser.name : ''}" placeholder="e.g. Chidi M." required></div>
-          <div class="field"><label>Rating</label>
-            <select id="reviewRating">
-              <option value="5">★★★★★ Excellent</option>
-              <option value="4">★★★★☆ Good</option>
-              <option value="3">★★★☆☆ Okay</option>
-              <option value="2">★★☆☆☆ Poor</option>
-              <option value="1">★☆☆☆☆ Bad</option>
-            </select>
-          </div>
-        </div>
-        <div class="field"><label>Review</label><textarea id="reviewText" rows="3" placeholder="How was the service?" required></textarea></div>
-        <button type="submit" class="btn btn-outline-dark btn-block">Submit review</button>
-      </form>
     </div>
   `;
 
   document.querySelectorAll("#vendorModalContent .modal-close").forEach(btn=>{
     btn.addEventListener("click", ()=>closeModal(btn.dataset.close));
   });
-  document.querySelectorAll("#vendorModalContent [data-vtab]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      document.querySelectorAll("#vendorModalContent .tab-btn").forEach(b=>b.classList.remove("active"));
-      document.querySelectorAll("#vendorModalContent .tab-panel").forEach(p=>p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(btn.dataset.vtab).classList.add("active");
-    });
-  });
 
   document.getElementById("bookForm").addEventListener("submit", e=>{
     e.preventDefault();
-    const date = document.getElementById("bookDate").value || "today";
+    if(!currentUser){
+      alert("Please Sign Up or Log In first to place an order.");
+      openAuthModal("login");
+      return;
+    }
+
+    const date = document.getElementById("bookDate").value;
     const slot = document.getElementById("bookSlot").value;
     const hall = document.getElementById("bookHall").value;
+    
     const box = document.getElementById("bookConfirm");
     box.classList.add("show");
-    box.innerHTML = `<b>Booking confirmed ✓</b><br>${v.name} — ${date} at ${slot}${hall ? ` · delivery to ${hall}` : ''}.<br>A confirmation has been sent to ${v.whatsapp} on WhatsApp.`;
+    box.innerHTML = `<b>Order Confirmed ✓</b><br>You have 10 minutes to withdraw this order if needed.<br>Delivery to: ${hall}`;
+
+    addOrderWithWithdrawal({
+      type: 'order',
+      title: `${v.category} Order`,
+      vendor: v.name
+    });
+
     if(hall){
       addToDeliveryQueue(hall, slot, v.name, v.category);
     }
-  });
-
-  document.getElementById("reviewForm").addEventListener("submit", e=>{
-    e.preventDefault();
-    const name = document.getElementById("reviewName").value || "Anonymous";
-    const rating = Number(document.getElementById("reviewRating").value);
-    const text = document.getElementById("reviewText").value;
-    v.reviews.unshift({ user:name, rating, text, date:"just now" });
-    renderVendorModal();
-    document.querySelector('[data-vtab="reviewPanel"]').click();
-    renderVendors();
   });
 }
 
@@ -636,9 +728,23 @@ function renderPools(){
 
   wrap.querySelectorAll(".join-pool").forEach(btn=>{
     btn.addEventListener("click", ()=>{
+      if(!currentUser){
+        alert("Please Sign Up or Log In first to join group buys.");
+        openAuthModal("login");
+        return;
+      }
+
       const g = groupOrders.find(x=>x.id===Number(btn.dataset.id));
       if(g && g.joined < g.threshold){
         g.joined += 1;
+
+        addOrderWithWithdrawal({
+          type: 'pool',
+          poolId: g.id,
+          title: `Group Buy: ${g.title}`,
+          vendor: g.vendorName
+        });
+
         renderPools();
         renderTicker();
         updateStats();
@@ -676,7 +782,10 @@ function addToDeliveryQueue(hall, slot, vendorName, category){
   renderTicker();
 }
 
-/* --------------------------- STATS --------------------------- */
+/* --------------------------- UTILS & STATS --------------------------- */
+function openModal(id){ document.getElementById(id).classList.add("open"); }
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
 function updateStats(){
   document.getElementById("statVendors").textContent = vendors.length;
   document.getElementById("statPools").textContent = groupOrders.filter(g=>g.joined < g.threshold).length;
